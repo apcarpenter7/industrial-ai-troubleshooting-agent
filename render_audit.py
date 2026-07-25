@@ -21,6 +21,7 @@ from pathlib import Path
 # Loading
 # ---------------------------------------------------------------------------
 
+
 def load_trace(trace_dir: Path) -> tuple[dict | None, list[dict]]:
     meta = None
     meta_path = trace_dir / "session_meta.json"
@@ -44,6 +45,7 @@ def load_trace(trace_dir: Path) -> tuple[dict | None, list[dict]]:
 # ---------------------------------------------------------------------------
 # Classification
 # ---------------------------------------------------------------------------
+
 
 def classify_entries(entries: list[dict]) -> dict:
     classified = {
@@ -76,6 +78,7 @@ def classify_entries(entries: list[dict]) -> dict:
 # Evidence mapping
 # ---------------------------------------------------------------------------
 
+
 def build_evidence_map(entries: list[dict]) -> dict[int, list[dict]]:
     """Map step number -> reasoning entries that reference it."""
     emap: dict[int, list[dict]] = {}
@@ -89,6 +92,7 @@ def build_evidence_map(entries: list[dict]) -> dict[int, list[dict]]:
 # ---------------------------------------------------------------------------
 # Investigation sections
 # ---------------------------------------------------------------------------
+
 
 def extract_investigation_sections(entries: list[dict]) -> dict:
     sections: dict[str, list] = {
@@ -113,38 +117,46 @@ def extract_investigation_sections(entries: list[dict]) -> dict:
             for tag in args.get("tag_names", []):
                 if tag not in seen_tags:
                     seen_tags.add(tag)
-                    sections["tags_queried"].append({
-                        "tag": tag,
-                        "first_seen_step": step,
-                        "time_window": f"{args.get('start_time', '?')} to {args.get('end_time', '?')}",
-                    })
+                    sections["tags_queried"].append(
+                        {
+                            "tag": tag,
+                            "first_seen_step": step,
+                            "time_window": f"{args.get('start_time', '?')} to {args.get('end_time', '?')}",
+                        }
+                    )
 
         elif tool.startswith("alarm_"):
-            sections["alarms_analyzed"].append({
-                "tool": tool,
-                "step": step,
-                "summary": e.get("summary", ""),
-                "timestamp": args.get("timestamp", args.get("start_time", "?")),
-            })
+            sections["alarms_analyzed"].append(
+                {
+                    "tool": tool,
+                    "step": step,
+                    "summary": e.get("summary", ""),
+                    "timestamp": args.get("timestamp", args.get("start_time", "?")),
+                }
+            )
 
         elif tool.startswith("kg_"):
-            sections["kg_paths"].append({
-                "tool": tool,
-                "step": step,
-                "summary": e.get("summary", ""),
-                "key_arg": _kg_key_arg(tool, args),
-            })
+            sections["kg_paths"].append(
+                {
+                    "tool": tool,
+                    "step": step,
+                    "summary": e.get("summary", ""),
+                    "key_arg": _kg_key_arg(tool, args),
+                }
+            )
 
         elif tool.startswith("docs_"):
             doc_key = args.get("query", args.get("doc_id", "?"))
             if doc_key not in seen_docs:
                 seen_docs.add(doc_key)
-                sections["docs_referenced"].append({
-                    "tool": tool,
-                    "step": step,
-                    "summary": e.get("summary", ""),
-                    "query_or_id": doc_key,
-                })
+                sections["docs_referenced"].append(
+                    {
+                        "tool": tool,
+                        "step": step,
+                        "summary": e.get("summary", ""),
+                        "query_or_id": doc_key,
+                    }
+                )
 
     return sections
 
@@ -169,6 +181,7 @@ def _kg_key_arg(tool: str, args: dict) -> str:
 # Self-checks
 # ---------------------------------------------------------------------------
 
+
 def run_self_checks(entries: list[dict], meta: dict | None) -> list[str]:
     warnings = []
     all_steps = {e["step"] for e in entries}
@@ -188,8 +201,12 @@ def run_self_checks(entries: list[dict], meta: dict | None) -> list[str]:
                 )
 
     tool_count = len(classified["tool_calls"])
-    reasoning_count = (len(classified["hypotheses"]) + len(classified["conclusions"])
-                       + len(classified["observations"]) + len(classified["rejections"]))
+    reasoning_count = (
+        len(classified["hypotheses"])
+        + len(classified["conclusions"])
+        + len(classified["observations"])
+        + len(classified["rejections"])
+    )
     if tool_count > 3 and reasoning_count == 0:
         warnings.append(
             f"Thin trace: {tool_count} tool calls but NO reasoning entries logged. "
@@ -202,7 +219,9 @@ def run_self_checks(entries: list[dict], meta: dict | None) -> list[str]:
         )
 
     if meta is None or not meta.get("finalized", False):
-        warnings.append("Trace was NOT finalized — integrity hash may be missing or incomplete.")
+        warnings.append(
+            "Trace was NOT finalized — integrity hash may be missing or incomplete."
+        )
 
     return warnings
 
@@ -244,7 +263,10 @@ def _format_tool_args(tool: str, args: dict) -> str:
         if len(tag_names) <= 5:
             tags_str = ", ".join(f"`{t}`" for t in tag_names)
         else:
-            tags_str = ", ".join(f"`{t}`" for t in tag_names[:4]) + f" + {len(tag_names) - 4} more"
+            tags_str = (
+                ", ".join(f"`{t}`" for t in tag_names[:4])
+                + f" + {len(tag_names) - 4} more"
+            )
         parts.append(f"Tags: {tags_str}")
 
     start = args.get("start_time")
@@ -274,7 +296,7 @@ def _format_tool_args(tool: str, args: dict) -> str:
 
     query = args.get("query")
     if query:
-        parts.append(f"Query: \"{query}\"")
+        parts.append(f'Query: "{query}"')
 
     doc_id = args.get("doc_id")
     if doc_id:
@@ -298,7 +320,7 @@ def _format_tool_args(tool: str, args: dict) -> str:
 
     title = args.get("title")
     if title:
-        parts.append(f"Title: \"{title}\"")
+        parts.append(f'Title: "{title}"')
 
     if not parts:
         return ""
@@ -309,6 +331,7 @@ def _format_tool_args(tool: str, args: dict) -> str:
 # ---------------------------------------------------------------------------
 # Markdown rendering
 # ---------------------------------------------------------------------------
+
 
 def render_markdown(
     meta: dict | None,
@@ -333,8 +356,9 @@ def render_markdown(
     lines.append("## Root Cause")
     lines.append("")
 
-    final_conclusions = [c for c in classified["conclusions"]
-                         if c.get("confidence") is not None]
+    final_conclusions = [
+        c for c in classified["conclusions"] if c.get("confidence") is not None
+    ]
     if final_conclusions:
         fc = final_conclusions[-1]
         conf = fc.get("confidence", 0)
@@ -354,7 +378,9 @@ def render_markdown(
         lines.append("")
         ev = fc.get("evidence_steps", [])
         if ev:
-            lines.append(f"*Supporting evidence: steps {', '.join(str(s) for s in ev)}*")
+            lines.append(
+                f"*Supporting evidence: steps {', '.join(str(s) for s in ev)}*"
+            )
         lines.append("")
     else:
         non_conf = classified["conclusions"]
@@ -382,6 +408,7 @@ def render_markdown(
         duration_str = ""
         try:
             from datetime import datetime, timezone
+
             t0 = datetime.fromisoformat(start)
             t1 = datetime.fromisoformat(end)
             dur_sec = (t1 - t0).total_seconds()
@@ -394,8 +421,10 @@ def render_markdown(
 
         lines.append(f"**Question:** {question}")
         lines.append("")
-        lines.append(f"The investigation comprised {total} steps ({tc} tool calls, "
-                      f"{rc} reasoning entries){duration_str}.")
+        lines.append(
+            f"The investigation comprised {total} steps ({tc} tool calls, "
+            f"{rc} reasoning entries){duration_str}."
+        )
     else:
         lines.append("*(No session metadata available — trace may be incomplete.)*")
     lines.append("")
@@ -485,7 +514,9 @@ def render_markdown(
         lines.append("| Tag | First Seen (Step) | Time Window |")
         lines.append("|-----|-------------------|-------------|")
         for t in sections["tags_queried"]:
-            lines.append(f"| `{t['tag']}` | {t['first_seen_step']} | {t['time_window']} |")
+            lines.append(
+                f"| `{t['tag']}` | {t['first_seen_step']} | {t['time_window']} |"
+            )
     else:
         lines.append("*(No historian tags were queried.)*")
     lines.append("")
@@ -505,7 +536,9 @@ def render_markdown(
         lines.append("## Knowledge Graph Paths")
         lines.append("")
         for k in sections["kg_paths"]:
-            lines.append(f"- **Step {k['step']}** (`{k['tool']}` — {k['key_arg']}): {k['summary']}")
+            lines.append(
+                f"- **Step {k['step']}** (`{k['tool']}` — {k['key_arg']}): {k['summary']}"
+            )
         lines.append("")
 
     # Documents Referenced
@@ -528,8 +561,10 @@ def render_markdown(
         if meta.get("kg_file_sha256"):
             lines.append(f"- **KG version:** `{meta['kg_file_sha256'][:12]}...`")
         if meta.get("doc_set_file_count"):
-            lines.append(f"- **Doc set:** {meta['doc_set_file_count']} files, "
-                          f"{meta.get('doc_set_total_bytes', '?')} bytes")
+            lines.append(
+                f"- **Doc set:** {meta['doc_set_file_count']} files, "
+                f"{meta.get('doc_set_total_bytes', '?')} bytes"
+            )
     else:
         lines.append("- *(No session metadata available.)*")
     lines.append("")
@@ -540,6 +575,7 @@ def render_markdown(
 def _numbered_to_bullets(text: str) -> str:
     """Convert lines starting with '1. ', '2. ' etc. to bullet list lines."""
     import re
+
     return re.sub(r"(?m)^\d+\.\s+", "- ", text)
 
 
@@ -621,12 +657,17 @@ def _extract_root_cause_and_chain(text: str) -> tuple[str, list[str]]:
     # was skipped), so we never slice mid-word.
     if not chain_items:
         rc_idx = cleaned.find(root_cause)
-        remainder = cleaned[rc_idx + len(root_cause):].strip() if rc_idx >= 0 else ""
-        for intro in ("The failure sequence:", "The sequence:", "Failure sequence:",
-                      "CAUSAL CHAIN:", "Causal chain:"):
+        remainder = cleaned[rc_idx + len(root_cause) :].strip() if rc_idx >= 0 else ""
+        for intro in (
+            "The failure sequence:",
+            "The sequence:",
+            "Failure sequence:",
+            "CAUSAL CHAIN:",
+            "Causal chain:",
+        ):
             low = remainder.lower()
             if intro.lower() in low:
-                remainder = remainder[low.find(intro.lower()) + len(intro):].strip()
+                remainder = remainder[low.find(intro.lower()) + len(intro) :].strip()
         if remainder:
             sentences = [s.strip() for s in remainder.split(". ") if s.strip()]
             chain_items = [s if s.endswith(".") else s + "." for s in sentences[:10]]
@@ -634,7 +675,9 @@ def _extract_root_cause_and_chain(text: str) -> tuple[str, list[str]]:
     return root_cause, chain_items
 
 
-def render_summary_markdown(meta: dict | None, entries: list[dict], classified: dict) -> str:
+def render_summary_markdown(
+    meta: dict | None, entries: list[dict], classified: dict
+) -> str:
     lines: list[str] = []
     lines.append("# Executive Summary")
     lines.append("")
@@ -649,6 +692,7 @@ def render_summary_markdown(meta: dict | None, entries: list[dict], classified: 
         duration_str = ""
         try:
             from datetime import datetime, timezone
+
             t0 = datetime.fromisoformat(meta.get("start_time", ""))
             t1 = datetime.fromisoformat(meta.get("end_time", ""))
             dur_sec = (t1 - t0).total_seconds()
@@ -670,14 +714,17 @@ def render_summary_markdown(meta: dict | None, entries: list[dict], classified: 
     lines.append("## Root Cause")
     lines.append("")
 
-    final_conclusions = [c for c in classified["conclusions"]
-                         if c.get("confidence") is not None]
+    final_conclusions = [
+        c for c in classified["conclusions"] if c.get("confidence") is not None
+    ]
     all_conclusions = final_conclusions or classified["conclusions"]
 
     chain_items: list[str] = []
     if all_conclusions:
         conclusion_text = _strip_rejected_hypotheses(all_conclusions[-1]["text"])
-        root_cause_sentence, chain_items = _extract_root_cause_and_chain(conclusion_text)
+        root_cause_sentence, chain_items = _extract_root_cause_and_chain(
+            conclusion_text
+        )
         lines.append(root_cause_sentence)
         lines.append("")
         if final_conclusions:
@@ -707,9 +754,9 @@ def render_summary_markdown(meta: dict | None, entries: list[dict], classified: 
     if corrective_actions:
         for ca in corrective_actions:
             # Split multi-paragraph blocks so each logical action gets its own bullet
-            paragraphs = [p.strip() for p in ca['text'].split('\n\n') if p.strip()]
+            paragraphs = [p.strip() for p in ca["text"].split("\n\n") if p.strip()]
             if not paragraphs:
-                paragraphs = [ca['text'].strip()]
+                paragraphs = [ca["text"].strip()]
             for para in paragraphs:
                 lines.append(f"- {para}")
     else:
@@ -774,7 +821,10 @@ def _resolve_hypothesis(hypothesis: dict, classified: dict) -> tuple[str, str]:
 
     for c in classified["conclusions"]:
         if c["step"] > h_step:
-            if any(s in c.get("evidence_steps", []) for s in hypothesis.get("evidence_steps", [])):
+            if any(
+                s in c.get("evidence_steps", [])
+                for s in hypothesis.get("evidence_steps", [])
+            ):
                 return "Confirmed", c["text"][:60]
 
     for r in classified["rejections"]:
@@ -787,6 +837,7 @@ def _resolve_hypothesis(hypothesis: dict, classified: dict) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def render_report(trace_dir_str: str) -> str:
     """Render report.md for a trace directory. Returns the report file path."""
@@ -805,8 +856,9 @@ def render_report(trace_dir_str: str) -> str:
     sections = extract_investigation_sections(entries)
     warnings = run_self_checks(entries, meta)
 
-    report = render_markdown(meta, entries, classified, evidence_map,
-                             sections, warnings)
+    report = render_markdown(
+        meta, entries, classified, evidence_map, sections, warnings
+    )
 
     report_path = trace_dir / "report.md"
     report_path.write_text(report, encoding="utf-8")
@@ -831,14 +883,17 @@ def _file_url(path_str: str) -> str:
     so the link resolves.
     """
     from urllib.parse import quote
+
     abs_path = str(Path(path_str).resolve())
     try:
-        junction_ok = (Path(_JUNCTION).exists()
-                       and Path(_JUNCTION).resolve() == Path(_PROJECT_ROOT).resolve())
+        junction_ok = (
+            Path(_JUNCTION).exists()
+            and Path(_JUNCTION).resolve() == Path(_PROJECT_ROOT).resolve()
+        )
     except OSError:
         junction_ok = False
     if junction_ok and abs_path.startswith(_PROJECT_ROOT):
-        abs_path = _JUNCTION + abs_path[len(_PROJECT_ROOT):]
+        abs_path = _JUNCTION + abs_path[len(_PROJECT_ROOT) :]
     forward = abs_path.replace("\\", "/")
     encoded = quote(forward, safe="/:@")
     return f"file:///{encoded}"

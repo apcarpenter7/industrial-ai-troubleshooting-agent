@@ -12,7 +12,7 @@ import os
 from collections import defaultdict
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-_KG_JSON    = os.path.join(PROJECT_DIR, "boiler_kg.json")
+_KG_JSON = os.path.join(PROJECT_DIR, "boiler_kg.json")
 
 _KG_INSTANCE = None
 
@@ -23,6 +23,7 @@ def _get_kg():
         return _KG_INSTANCE
     try:
         import knowledge_graph as _kg_mod
+
         _KG_INSTANCE = _kg_mod.load_graph(_KG_JSON)
         return _KG_INSTANCE
     except Exception as e:
@@ -35,6 +36,7 @@ def _get_kg():
 # ---------------------------------------------------------------------------
 # Tool implementations
 # ---------------------------------------------------------------------------
+
 
 def tool_kg_trace_stream(stream_name: str) -> dict:
     try:
@@ -67,27 +69,29 @@ def tool_kg_query_equipment(query: str) -> dict:
             results.append(m)
             continue
 
-        upstream      = kg.get_upstream_equipment(node_id)[:5]
+        upstream = kg.get_upstream_equipment(node_id)[:5]
         downstream_sg = kg._get_flow_subgraph()
-        downstream    = []
+        downstream = []
         for _, v, _ in downstream_sg.out_edges(node_id, data=True):
             node_attrs = kg.G.nodes.get(v, {})
             if node_attrs.get("node_type") in ("Equipment", "Boundary"):
                 downstream.append({"node_id": v, "name": node_attrs.get("name", v)})
 
-        results.append({
-            **m,
-            "process_streams": kg.get_stream_at_equipment(node_id),
-            "upstream_equipment": [
-                {
-                    "node_id":      u["node_id"],
-                    "name":         u.get("name", u["node_id"]),
-                    "hop_distance": u.get("hop_distance"),
-                }
-                for u in upstream
-            ],
-            "downstream_equipment": downstream[:5],
-        })
+        results.append(
+            {
+                **m,
+                "process_streams": kg.get_stream_at_equipment(node_id),
+                "upstream_equipment": [
+                    {
+                        "node_id": u["node_id"],
+                        "name": u.get("name", u["node_id"]),
+                        "hop_distance": u.get("hop_distance"),
+                    }
+                    for u in upstream
+                ],
+                "downstream_equipment": downstream[:5],
+            }
+        )
 
     return {"query": query, "matches": results}
 
@@ -101,8 +105,8 @@ def tool_kg_get_upstream_sensors(node_id: str) -> dict:
     sensors = kg.get_upstream_sensors(node_id)
     if not sensors:
         return {
-            "node_id":         node_id,
-            "message":         f"No upstream sensors found for '{node_id}'. Verify the tag name or equipment name.",
+            "node_id": node_id,
+            "message": f"No upstream sensors found for '{node_id}'. Verify the tag name or equipment name.",
             "upstream_sensors": [],
         }
 
@@ -111,11 +115,13 @@ def tool_kg_get_upstream_sensors(node_id: str) -> dict:
         by_hop[s.get("hop_distance", "?")].append(s)
 
     return {
-        "node_id":                node_id,
+        "node_id": node_id,
         "total_upstream_sensors": len(sensors),
         "grouped_by_hop": {
             str(k): v
-            for k, v in sorted(by_hop.items(), key=lambda x: (isinstance(x[0], str), x[0]))
+            for k, v in sorted(
+                by_hop.items(), key=lambda x: (isinstance(x[0], str), x[0])
+            )
         },
         "flat_list": sensors,
     }

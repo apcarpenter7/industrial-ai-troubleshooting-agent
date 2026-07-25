@@ -28,6 +28,7 @@ from sklearn.preprocessing import StandardScaler
 from scipy import stats
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -44,6 +45,7 @@ PLOTS_DIR = os.path.join(PROJECT_DIR, "plots", "MSPC", f"MSPC_{RUN_DATE}_{RUN_TI
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args():
     p = argparse.ArgumentParser(description="MSPC analysis on boiler historian data")
     p.add_argument("--downsample-minutes", type=int, default=1)
@@ -52,12 +54,24 @@ def parse_args():
     p.add_argument("--noc-max", type=float, default=545.0)
     p.add_argument("--cpv-threshold", type=float, default=0.85)
     p.add_argument("--n-components", type=int, default=None)
-    p.add_argument("--exclude-tags", type=str, default=None,
-                   help="Comma-separated list of tags to exclude")
-    p.add_argument("--start-time", type=str, default=None,
-                   help="Start timestamp filter (YYYY-MM-DD HH:MM:SS)")
-    p.add_argument("--end-time", type=str, default=None,
-                   help="End timestamp filter (YYYY-MM-DD HH:MM:SS)")
+    p.add_argument(
+        "--exclude-tags",
+        type=str,
+        default=None,
+        help="Comma-separated list of tags to exclude",
+    )
+    p.add_argument(
+        "--start-time",
+        type=str,
+        default=None,
+        help="Start timestamp filter (YYYY-MM-DD HH:MM:SS)",
+    )
+    p.add_argument(
+        "--end-time",
+        type=str,
+        default=None,
+        help="End timestamp filter (YYYY-MM-DD HH:MM:SS)",
+    )
     p.add_argument("--top-n-events", type=int, default=5)
     p.add_argument("--top-n-contributors", type=int, default=15)
     return p.parse_args()
@@ -66,6 +80,7 @@ def parse_args():
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
+
 
 def load_data(downsample_minutes=1, exclude_tags=None, start_time=None, end_time=None):
     con = duckdb.connect(DB_PATH, read_only=True)
@@ -110,6 +125,7 @@ def load_data(downsample_minutes=1, exclude_tags=None, start_time=None, end_time
 # Model building
 # ---------------------------------------------------------------------------
 
+
 def build_model(df_noc, n_components=None, cpv_threshold=0.85):
     scaler = StandardScaler()
     X_noc = scaler.fit_transform(df_noc.values)
@@ -138,16 +154,17 @@ def build_model(df_noc, n_components=None, cpv_threshold=0.85):
 # Monitoring statistics
 # ---------------------------------------------------------------------------
 
+
 def compute_monitoring(X_scaled, model):
     pca = model["pca"]
     eigenvalues = pca.explained_variance_
 
     scores = pca.transform(X_scaled)
-    t2 = np.sum(scores ** 2 / eigenvalues, axis=1)
+    t2 = np.sum(scores**2 / eigenvalues, axis=1)
 
     X_hat = pca.inverse_transform(scores)
     residuals = X_scaled - X_hat
-    spe = np.sum(residuals ** 2, axis=1)
+    spe = np.sum(residuals**2, axis=1)
 
     return t2, spe, scores
 
@@ -162,25 +179,25 @@ def compute_control_limits(model, alpha_levels=(0.05, 0.01)):
         conf = int((1 - alpha) * 100)
 
         f_val = stats.f.ppf(1 - alpha, A, n - A)
-        limits[f"T2_{conf}"] = A * (n ** 2 - 1) / (n * (n - A)) * f_val
+        limits[f"T2_{conf}"] = A * (n**2 - 1) / (n * (n - A)) * f_val
 
         if len(residual_eig) > 0:
             theta1 = np.sum(residual_eig)
-            theta2 = np.sum(residual_eig ** 2)
-            theta3 = np.sum(residual_eig ** 3)
+            theta2 = np.sum(residual_eig**2)
+            theta3 = np.sum(residual_eig**3)
 
             if theta1 > 0 and theta2 > 0:
-                h0 = 1 - (2 * theta1 * theta3) / (3 * theta2 ** 2)
+                h0 = 1 - (2 * theta1 * theta3) / (3 * theta2**2)
                 c_alpha = stats.norm.ppf(1 - alpha)
 
                 if h0 > 0:
-                    term = c_alpha * np.sqrt(2 * theta2 * h0 ** 2) / theta1
-                    term += 1 + theta2 * h0 * (h0 - 1) / theta1 ** 2
+                    term = c_alpha * np.sqrt(2 * theta2 * h0**2) / theta1
+                    term += 1 + theta2 * h0 * (h0 - 1) / theta1**2
                     limits[f"SPE_{conf}"] = theta1 * (max(term, 0) ** (1 / h0))
                 else:
-                    limits[f"SPE_{conf}"] = theta1 * (
-                        1 + c_alpha * np.sqrt(2 * theta2) / theta1
-                    ) ** 2
+                    limits[f"SPE_{conf}"] = (
+                        theta1 * (1 + c_alpha * np.sqrt(2 * theta2) / theta1) ** 2
+                    )
             else:
                 limits[f"SPE_{conf}"] = 0.0
         else:
@@ -192,6 +209,7 @@ def compute_control_limits(model, alpha_levels=(0.05, 0.01)):
 # ---------------------------------------------------------------------------
 # Anomalous period detection
 # ---------------------------------------------------------------------------
+
 
 def find_anomalous_periods(timestamps, t2, spe, t2_limit, spe_limit):
     anomalous = (t2 > t2_limit) | (spe > spe_limit)
@@ -205,12 +223,21 @@ def find_anomalous_periods(timestamps, t2, spe, t2_limit, spe_limit):
             in_period = True
         elif not anomalous[i] and in_period:
             in_period = False
-            _append_period(periods, timestamps, t2, spe, t2_limit, spe_limit,
-                           start_idx, i - 1)
+            _append_period(
+                periods, timestamps, t2, spe, t2_limit, spe_limit, start_idx, i - 1
+            )
 
     if in_period:
-        _append_period(periods, timestamps, t2, spe, t2_limit, spe_limit,
-                       start_idx, len(anomalous) - 1)
+        _append_period(
+            periods,
+            timestamps,
+            t2,
+            spe,
+            t2_limit,
+            spe_limit,
+            start_idx,
+            len(anomalous) - 1,
+        )
 
     return periods
 
@@ -231,22 +258,25 @@ def _append_period(periods, timestamps, t2, spe, t2_limit, spe_limit, s, e):
         atype = "SPE"
         peak_idx = s + int(np.argmax(spe_slice))
 
-    periods.append({
-        "start": str(timestamps[s]),
-        "end": str(timestamps[e]),
-        "duration_min": round(
-            (timestamps[e] - timestamps[s]).total_seconds() / 60, 1
-        ),
-        "type": atype,
-        "max_T2": round(float(np.max(t2_slice)), 2),
-        "max_SPE": round(float(np.max(spe_slice)), 2),
-        "peak_idx": peak_idx,
-    })
+    periods.append(
+        {
+            "start": str(timestamps[s]),
+            "end": str(timestamps[e]),
+            "duration_min": round(
+                (timestamps[e] - timestamps[s]).total_seconds() / 60, 1
+            ),
+            "type": atype,
+            "max_T2": round(float(np.max(t2_slice)), 2),
+            "max_SPE": round(float(np.max(spe_slice)), 2),
+            "peak_idx": peak_idx,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # Contribution analysis
 # ---------------------------------------------------------------------------
+
 
 def compute_t2_contributions(X_scaled, model):
     """Miller et al. (1998) decomposition — contributions sum exactly to T²."""
@@ -273,6 +303,7 @@ def compute_spe_contributions(X_scaled, model):
 # Plots
 # ---------------------------------------------------------------------------
 
+
 def _ensure_plots_dir():
     os.makedirs(PLOTS_DIR, exist_ok=True)
 
@@ -297,11 +328,19 @@ def plot_scree(model):
     ax1.set_xticks(list(components))
 
     ax2 = ax1.twinx()
-    ax2.plot(components, cumvar_pct, "o-", color="#d62728", linewidth=1.5,
-             markersize=4, label="Cumulative")
+    ax2.plot(
+        components,
+        cumvar_pct,
+        "o-",
+        color="#d62728",
+        linewidth=1.5,
+        markersize=4,
+        label="Cumulative",
+    )
     ax2.set_ylabel("Cumulative Variance (%)")
-    ax2.axhline(y=cumvar_pct[n_retained - 1], color="#d62728",
-                linestyle="--", alpha=0.4)
+    ax2.axhline(
+        y=cumvar_pct[n_retained - 1], color="#d62728", linestyle="--", alpha=0.4
+    )
 
     ax1.set_title(
         f"PCA Scree Plot — {n_retained} components retained "
@@ -328,8 +367,13 @@ def plot_monitoring(timestamps, te_values, t2, spe, limits, noc_min, noc_max):
 
     # --- Panel 1: TE_8332A ---
     ax1.plot(timestamps, te_values, linewidth=0.6, color="#1f77b4")
-    ax1.axhspan(noc_min, noc_max, alpha=0.15, color="green",
-                label=f"Normal ({noc_min}–{noc_max}°C)")
+    ax1.axhspan(
+        noc_min,
+        noc_max,
+        alpha=0.15,
+        color="green",
+        label=f"Normal ({noc_min}–{noc_max}°C)",
+    )
     ax1.set_ylabel("TE_8332A (°C)")
     ax1.set_title("Boiler Outlet Steam Temperature", fontsize=9, loc="left")
     ax1.legend(fontsize=8, loc="upper right")
@@ -337,19 +381,34 @@ def plot_monitoring(timestamps, te_values, t2, spe, limits, noc_min, noc_max):
 
     # --- Panel 2: T² ---
     ax2.plot(timestamps, t2, linewidth=0.6, color="#1f77b4")
-    ax2.axhline(y=limits["T2_95"], color="#ff7f0e", linestyle="--", linewidth=1,
-                label=f"95% ({limits['T2_95']:.1f})")
-    ax2.axhline(y=limits["T2_99"], color="#d62728", linestyle="--", linewidth=1,
-                label=f"99% ({limits['T2_99']:.1f})")
+    ax2.axhline(
+        y=limits["T2_95"],
+        color="#ff7f0e",
+        linestyle="--",
+        linewidth=1,
+        label=f"95% ({limits['T2_95']:.1f})",
+    )
+    ax2.axhline(
+        y=limits["T2_99"],
+        color="#d62728",
+        linestyle="--",
+        linewidth=1,
+        label=f"99% ({limits['T2_99']:.1f})",
+    )
 
     mask_95 = t2 > limits["T2_95"]
     mask_99 = t2 > limits["T2_99"]
     if np.any(mask_95 & ~mask_99):
-        ax2.scatter(ts_arr[mask_95 & ~mask_99], t2[mask_95 & ~mask_99],
-                    s=3, c="#ff7f0e", zorder=5, alpha=0.5)
+        ax2.scatter(
+            ts_arr[mask_95 & ~mask_99],
+            t2[mask_95 & ~mask_99],
+            s=3,
+            c="#ff7f0e",
+            zorder=5,
+            alpha=0.5,
+        )
     if np.any(mask_99):
-        ax2.scatter(ts_arr[mask_99], t2[mask_99],
-                    s=3, c="#d62728", zorder=5, alpha=0.5)
+        ax2.scatter(ts_arr[mask_99], t2[mask_99], s=3, c="#d62728", zorder=5, alpha=0.5)
 
     ax2.set_ylabel("Hotelling's T²")
     ax2.set_title("T² Statistic (within-model variation)", fontsize=9, loc="left")
@@ -358,19 +417,36 @@ def plot_monitoring(timestamps, te_values, t2, spe, limits, noc_min, noc_max):
 
     # --- Panel 3: SPE ---
     ax3.plot(timestamps, spe, linewidth=0.6, color="#1f77b4")
-    ax3.axhline(y=limits["SPE_95"], color="#ff7f0e", linestyle="--", linewidth=1,
-                label=f"95% ({limits['SPE_95']:.1f})")
-    ax3.axhline(y=limits["SPE_99"], color="#d62728", linestyle="--", linewidth=1,
-                label=f"99% ({limits['SPE_99']:.1f})")
+    ax3.axhline(
+        y=limits["SPE_95"],
+        color="#ff7f0e",
+        linestyle="--",
+        linewidth=1,
+        label=f"95% ({limits['SPE_95']:.1f})",
+    )
+    ax3.axhline(
+        y=limits["SPE_99"],
+        color="#d62728",
+        linestyle="--",
+        linewidth=1,
+        label=f"99% ({limits['SPE_99']:.1f})",
+    )
 
     mask_95s = spe > limits["SPE_95"]
     mask_99s = spe > limits["SPE_99"]
     if np.any(mask_95s & ~mask_99s):
-        ax3.scatter(ts_arr[mask_95s & ~mask_99s], spe[mask_95s & ~mask_99s],
-                    s=3, c="#ff7f0e", zorder=5, alpha=0.5)
+        ax3.scatter(
+            ts_arr[mask_95s & ~mask_99s],
+            spe[mask_95s & ~mask_99s],
+            s=3,
+            c="#ff7f0e",
+            zorder=5,
+            alpha=0.5,
+        )
     if np.any(mask_99s):
-        ax3.scatter(ts_arr[mask_99s], spe[mask_99s],
-                    s=3, c="#d62728", zorder=5, alpha=0.5)
+        ax3.scatter(
+            ts_arr[mask_99s], spe[mask_99s], s=3, c="#d62728", zorder=5, alpha=0.5
+        )
 
     ax3.set_ylabel("SPE / Q")
     ax3.set_title("SPE Statistic (outside-model variation)", fontsize=9, loc="left")
@@ -395,8 +471,11 @@ def plot_monitoring(timestamps, te_values, t2, spe, limits, noc_min, noc_max):
 
     ax3.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H:%M"))
     fig.autofmt_xdate(rotation=30)
-    fig.suptitle("MSPC Monitoring — Boiler Historian (5-Day Dataset)",
-                 fontsize=11, fontweight="bold")
+    fig.suptitle(
+        "MSPC Monitoring — Boiler Historian (5-Day Dataset)",
+        fontsize=11,
+        fontweight="bold",
+    )
     plt.tight_layout()
 
     ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -406,8 +485,17 @@ def plot_monitoring(timestamps, te_values, t2, spe, limits, noc_min, noc_max):
     return path
 
 
-def plot_contribution(timestamp_str, t2_val, spe_val, t2_contribs, spe_contribs,
-                      tag_names, tag_meta, top_n=15, limits=None):
+def plot_contribution(
+    timestamp_str,
+    t2_val,
+    spe_val,
+    t2_contribs,
+    spe_contribs,
+    tag_names,
+    tag_meta,
+    top_n=15,
+    limits=None,
+):
     _ensure_plots_dir()
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, max(6, top_n * 0.35)))
@@ -440,12 +528,14 @@ def plot_contribution(timestamp_str, t2_val, spe_val, t2_contribs, spe_contribs,
         lim_str = ""
         if limits and limit_key in limits:
             lim_str = f"  |  limit₉₉ = {limits[limit_key]:.1f}"
-        ax.set_title(f"{stat_name} = {stat_val:.1f}{lim_str}",
-                     fontsize=9, fontweight="bold")
+        ax.set_title(
+            f"{stat_name} = {stat_val:.1f}{lim_str}", fontsize=9, fontweight="bold"
+        )
         ax.set_xlabel(f"{stat_name} Contribution")
 
-    fig.suptitle(f"MSPC Contributions at {timestamp_str}",
-                 fontsize=11, fontweight="bold")
+    fig.suptitle(
+        f"MSPC Contributions at {timestamp_str}", fontsize=11, fontweight="bold"
+    )
     plt.tight_layout()
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -460,8 +550,10 @@ def plot_contribution(timestamp_str, t2_val, spe_val, t2_contribs, spe_contribs,
 # Fault report
 # ---------------------------------------------------------------------------
 
-def generate_fault_report(periods, limits, model, plots_dir,
-                          t2_contribs_all, spe_contribs_all, tag_names):
+
+def generate_fault_report(
+    periods, limits, model, plots_dir, t2_contribs_all, spe_contribs_all, tag_names
+):
     os.makedirs(plots_dir, exist_ok=True)
     lines = [
         f"# MSPC Fault Report — {RUN_DATE[:4]}-{RUN_DATE[4:6]}-{RUN_DATE[6:]}",
@@ -500,6 +592,7 @@ def generate_fault_report(periods, limits, model, plots_dir,
 # Main pipeline
 # ---------------------------------------------------------------------------
 
+
 def main():
     args = parse_args()
 
@@ -509,26 +602,35 @@ def main():
 
     # 1. Load data
     print("Loading historian data...", file=sys.stderr)
-    df, tag_names, tag_meta = load_data(args.downsample_minutes, exclude_tags,
-                                        args.start_time, args.end_time)
+    df, tag_names, tag_meta = load_data(
+        args.downsample_minutes, exclude_tags, args.start_time, args.end_time
+    )
 
     if args.noc_tag not in tag_names:
-        print(f"ERROR: NOC tag '{args.noc_tag}' not in dataset "
-              f"(excluded or missing).", file=sys.stderr)
+        print(
+            f"ERROR: NOC tag '{args.noc_tag}' not in dataset (excluded or missing).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # 2. NOC split
     noc_mask = (df[args.noc_tag] >= args.noc_min) & (df[args.noc_tag] <= args.noc_max)
     df_noc = df[noc_mask]
-    print(f"NOC split: {len(df_noc)}/{len(df)} rows "
-          f"({len(df_noc)/len(df)*100:.1f}%) in normal range.", file=sys.stderr)
+    print(
+        f"NOC split: {len(df_noc)}/{len(df)} rows "
+        f"({len(df_noc) / len(df) * 100:.1f}%) in normal range.",
+        file=sys.stderr,
+    )
 
     # 3. Build model
     print("Fitting PCA model...", file=sys.stderr)
     model = build_model(df_noc, args.n_components, args.cpv_threshold)
     cumvar = np.cumsum(model["pca_full"].explained_variance_ratio_)
-    print(f"Retained {model['n_components']} components "
-          f"({cumvar[model['n_components']-1]*100:.1f}% variance).", file=sys.stderr)
+    print(
+        f"Retained {model['n_components']} components "
+        f"({cumvar[model['n_components'] - 1] * 100:.1f}% variance).",
+        file=sys.stderr,
+    )
 
     # 4. Monitor full dataset
     print("Computing monitoring statistics...", file=sys.stderr)
@@ -538,8 +640,9 @@ def main():
 
     # 5. Find anomalous periods
     timestamps = df.index.tolist()
-    periods = find_anomalous_periods(timestamps, t2, spe,
-                                     limits["T2_95"], limits["SPE_95"])
+    periods = find_anomalous_periods(
+        timestamps, t2, spe, limits["T2_95"], limits["SPE_95"]
+    )
 
     # 5b. Contribution arrays (needed for fault report and worst-event plots)
     print("Computing contributions for worst events...", file=sys.stderr)
@@ -548,8 +651,9 @@ def main():
 
     # 5c. Fault report
     print("Generating fault report...", file=sys.stderr)
-    report_path = generate_fault_report(periods, limits, model, PLOTS_DIR,
-                                        t2_contribs_all, spe_contribs_all, tag_names)
+    report_path = generate_fault_report(
+        periods, limits, model, PLOTS_DIR, t2_contribs_all, spe_contribs_all, tag_names
+    )
 
     # 6. Plots
     print("Generating scree plot...", file=sys.stderr)
@@ -557,8 +661,13 @@ def main():
 
     print("Generating monitoring chart...", file=sys.stderr)
     monitoring_path = plot_monitoring(
-        timestamps, df[args.noc_tag].values,
-        t2, spe, limits, args.noc_min, args.noc_max,
+        timestamps,
+        df[args.noc_tag].values,
+        t2,
+        spe,
+        limits,
+        args.noc_min,
+        args.noc_max,
     )
 
     # 7. Contribution plots for worst events
@@ -574,56 +683,74 @@ def main():
     for idx in worst_t2_idx:
         ts_str = str(timestamps[idx])
         path = plot_contribution(
-            ts_str, t2[idx], spe[idx],
-            t2_contribs_all[idx], spe_contribs_all[idx],
-            tag_names, tag_meta, args.top_n_contributors, limits,
+            ts_str,
+            t2[idx],
+            spe[idx],
+            t2_contribs_all[idx],
+            spe_contribs_all[idx],
+            tag_names,
+            tag_meta,
+            args.top_n_contributors,
+            limits,
         )
         contribution_plots.append(path)
         plotted_indices.add(idx)
 
         top_idx = np.argsort(np.abs(t2_contribs_all[idx]))[::-1][:5]
-        worst_t2_events.append({
-            "timestamp": ts_str,
-            "T2_value": round(float(t2[idx]), 2),
-            "SPE_value": round(float(spe[idx]), 2),
-            "top_contributors": [
-                {"tag": tag_names[i],
-                 "contribution": round(float(t2_contribs_all[idx][i]), 3)}
-                for i in top_idx
-            ],
-        })
+        worst_t2_events.append(
+            {
+                "timestamp": ts_str,
+                "T2_value": round(float(t2[idx]), 2),
+                "SPE_value": round(float(spe[idx]), 2),
+                "top_contributors": [
+                    {
+                        "tag": tag_names[i],
+                        "contribution": round(float(t2_contribs_all[idx][i]), 3),
+                    }
+                    for i in top_idx
+                ],
+            }
+        )
 
     for idx in worst_spe_idx:
         ts_str = str(timestamps[idx])
 
         if idx not in plotted_indices:
             path = plot_contribution(
-                ts_str, t2[idx], spe[idx],
-                t2_contribs_all[idx], spe_contribs_all[idx],
-                tag_names, tag_meta, args.top_n_contributors, limits,
+                ts_str,
+                t2[idx],
+                spe[idx],
+                t2_contribs_all[idx],
+                spe_contribs_all[idx],
+                tag_names,
+                tag_meta,
+                args.top_n_contributors,
+                limits,
             )
             contribution_plots.append(path)
             plotted_indices.add(idx)
 
         top_idx = np.argsort(spe_contribs_all[idx])[::-1][:5]
-        worst_spe_events.append({
-            "timestamp": ts_str,
-            "SPE_value": round(float(spe[idx]), 2),
-            "T2_value": round(float(t2[idx]), 2),
-            "top_contributors": [
-                {"tag": tag_names[i],
-                 "contribution": round(float(spe_contribs_all[idx][i]), 3)}
-                for i in top_idx
-            ],
-        })
+        worst_spe_events.append(
+            {
+                "timestamp": ts_str,
+                "SPE_value": round(float(spe[idx]), 2),
+                "T2_value": round(float(t2[idx]), 2),
+                "top_contributors": [
+                    {
+                        "tag": tag_names[i],
+                        "contribution": round(float(spe_contribs_all[idx][i]), 3),
+                    }
+                    for i in top_idx
+                ],
+            }
+        )
 
     # 8. Build summary
     summary = {
         "model": {
             "n_components": model["n_components"],
-            "cumulative_variance": round(
-                float(cumvar[model["n_components"] - 1]), 4
-            ),
+            "cumulative_variance": round(float(cumvar[model["n_components"] - 1]), 4),
             "explained_variance_per_component": [
                 round(float(v), 4)
                 for v in model["pca_full"].explained_variance_ratio_[
@@ -655,12 +782,7 @@ def main():
                 float(np.mean(spe > limits["SPE_99"]) * 100), 2
             ),
             "either_exceedance_95_pct": round(
-                float(
-                    np.mean(
-                        (t2 > limits["T2_95"]) | (spe > limits["SPE_95"])
-                    )
-                    * 100
-                ),
+                float(np.mean((t2 > limits["T2_95"]) | (spe > limits["SPE_95"])) * 100),
                 2,
             ),
             "anomalous_periods": periods,
@@ -677,8 +799,10 @@ def main():
         },
     }
 
-    print(f"\nDone. {len(contribution_plots)} contribution plots generated.",
-          file=sys.stderr)
+    print(
+        f"\nDone. {len(contribution_plots)} contribution plots generated.",
+        file=sys.stderr,
+    )
     print(json.dumps(summary, indent=2, default=str))
 
 

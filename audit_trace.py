@@ -30,6 +30,7 @@ RAG_DOCS_DIR = PROJECT_DIR / "RAG docs"
 # Result summarization
 # ---------------------------------------------------------------------------
 
+
 def _safe_get(d: Any, *keys: str, default: Any = None) -> Any:
     for k in keys:
         if isinstance(d, dict):
@@ -51,7 +52,10 @@ def _summarize_generic(result: Any) -> dict:
     if isinstance(result, dict) and "error" in result:
         return {"summary_text": f"Error: {result['error'][:200]}", "metrics": {}}
     if isinstance(result, list):
-        return {"summary_text": f"{len(result)} items returned", "metrics": {"count": len(result)}}
+        return {
+            "summary_text": f"{len(result)} items returned",
+            "metrics": {"count": len(result)},
+        }
     return {"summary_text": str(result)[:200], "metrics": {}}
 
 
@@ -62,7 +66,9 @@ def _summarize_list_tags(result: Any) -> dict:
 
 def _summarize_search_tags(result: Any) -> dict:
     count = len(result) if isinstance(result, list) else 0
-    names = [r.get("tag_name", "?") for r in result[:5]] if isinstance(result, list) else []
+    names = (
+        [r.get("tag_name", "?") for r in result[:5]] if isinstance(result, list) else []
+    )
     return {
         "summary_text": f"{count} tags matched: {', '.join(names)}",
         "metrics": {"match_count": count},
@@ -98,7 +104,9 @@ def _summarize_statistics(result: Any) -> dict:
     lines = []
     for tag in tag_names[:3]:
         s = stats[tag]
-        lines.append(f"{tag}: mean={s.get('mean', '?')}, min={s.get('min', '?')}, max={s.get('max', '?')}")
+        lines.append(
+            f"{tag}: mean={s.get('mean', '?')}, min={s.get('min', '?')}, max={s.get('max', '?')}"
+        )
     if len(tag_names) > 3:
         lines.append(f"... and {len(tag_names) - 3} more")
     return {
@@ -157,7 +165,9 @@ def _summarize_alarm_search_context(result: Any) -> dict:
     window = _safe_get(result, "window_minutes", default=30)
     alarms = _safe_get(result, "alarms", default=[])
     closest = sorted(alarms, key=lambda a: abs(a.get("minutes_offset", 999)))[:3]
-    closest_tags = [f"{a.get('tag_name', '?')}({a.get('alarm_level', '?')})" for a in closest]
+    closest_tags = [
+        f"{a.get('tag_name', '?')}({a.get('alarm_level', '?')})" for a in closest
+    ]
     return {
         "summary_text": f"{count} alarms within ±{window}min of {focal}, closest: {', '.join(closest_tags)}",
         "metrics": {"alarm_count": count, "window_minutes": window},
@@ -253,7 +263,10 @@ def _summarize_docs_search(result: Any) -> dict:
 
 def _summarize_docs_list(result: Any) -> dict:
     count = len(result) if isinstance(result, list) else 0
-    return {"summary_text": f"{count} documents listed", "metrics": {"doc_count": count}}
+    return {
+        "summary_text": f"{count} documents listed",
+        "metrics": {"doc_count": count},
+    }
 
 
 def _summarize_docs_get(result: Any) -> dict:
@@ -294,6 +307,7 @@ _SUMMARIZERS = {
 # Provenance helpers
 # ---------------------------------------------------------------------------
 
+
 def _compute_file_sha256(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -331,6 +345,7 @@ def _capture_provenance(question: str) -> dict:
 # ---------------------------------------------------------------------------
 # TraceSession
 # ---------------------------------------------------------------------------
+
 
 class TraceSession:
     """Manages a single audit trace run."""
@@ -440,8 +455,12 @@ class TraceSession:
         meta_path.write_text(json.dumps(meta, indent=2, default=str), encoding="utf-8")
 
         self.finalized = True
-        logger.info("Trace finalized: run_id=%s, steps=%d, hash=%s",
-                     self.run_id, self.step_counter, meta["trace_sha256"])
+        logger.info(
+            "Trace finalized: run_id=%s, steps=%d, hash=%s",
+            self.run_id,
+            self.step_counter,
+            meta["trace_sha256"],
+        )
         return meta
 
     def _append_entry(self, entry: dict) -> None:
@@ -474,6 +493,7 @@ class TraceSession:
 # Auto-render report
 # ---------------------------------------------------------------------------
 
+
 def _auto_render_report(trace_dir: Path) -> tuple[str | None, str | None]:
     """Render report.md and summary.md after finalization.
 
@@ -483,6 +503,7 @@ def _auto_render_report(trace_dir: Path) -> tuple[str | None, str | None]:
     summary_path = None
     try:
         from render_audit import render_report, render_summary
+
         report_path = render_report(str(trace_dir))
         summary_path = render_summary(str(trace_dir))
     except Exception as exc:

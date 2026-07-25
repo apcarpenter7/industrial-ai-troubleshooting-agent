@@ -23,21 +23,22 @@ from pathlib import Path
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_DIR = Path(__file__).parent
-DOCS_DIR    = PROJECT_DIR / "RAG docs"
-DB_DIR      = PROJECT_DIR / "rag_vector_db"
-COLLECTION  = "plant_docs"
-MODEL_NAME  = "BAAI/bge-small-en-v1.5"
+DOCS_DIR = PROJECT_DIR / "RAG docs"
+DB_DIR = PROJECT_DIR / "rag_vector_db"
+COLLECTION = "plant_docs"
+MODEL_NAME = "BAAI/bge-small-en-v1.5"
 
 # BGE models perform best when the query is prefixed — we use the same prefix
 # at query time (in rag_tools.py) to keep embeddings aligned.
 EMBED_PREFIX = "Represent this sentence for searching relevant passages: "
 
 # Chunking thresholds
-MIN_CHUNK_TOKENS  = 50    # merge sections shorter than this with the next
-MAX_CHUNK_TOKENS  = 800   # split sections longer than this at H3 / paragraph
+MIN_CHUNK_TOKENS = 50  # merge sections shorter than this with the next
+MAX_CHUNK_TOKENS = 800  # split sections longer than this at H3 / paragraph
 
 
 # ── Front-matter parser ───────────────────────────────────────────────────────
+
 
 def parse_front_matter(text: str) -> tuple[dict, str]:
     """
@@ -50,7 +51,7 @@ def parse_front_matter(text: str) -> tuple[dict, str]:
     if end == -1:
         return {}, text
     yaml_block = text[3:end].strip()
-    body = text[end + 4:].lstrip("\n")
+    body = text[end + 4 :].lstrip("\n")
     try:
         meta = yaml.safe_load(yaml_block) or {}
     except yaml.YAMLError:
@@ -60,12 +61,14 @@ def parse_front_matter(text: str) -> tuple[dict, str]:
 
 # ── Tokeniser (approximate) ───────────────────────────────────────────────────
 
+
 def approx_tokens(text: str) -> int:
     """Rough token count: ~0.75 tokens per word (good enough for chunking decisions)."""
     return int(len(text.split()) * 0.75)
 
 
 # ── Chunker ───────────────────────────────────────────────────────────────────
+
 
 def chunk_document(title: str, body: str) -> list[dict]:
     """
@@ -86,7 +89,7 @@ def chunk_document(title: str, body: str) -> list[dict]:
             continue
         m = re.match(r"^## (.+)", sec)
         heading = m.group(1).strip() if m else "Introduction"
-        content = sec[m.end():].strip() if m else sec
+        content = sec[m.end() :].strip() if m else sec
         sections.append((heading, content))
 
     # Merge micro-sections into their successor
@@ -97,7 +100,10 @@ def chunk_document(title: str, body: str) -> list[dict]:
         # If too short and there's a next section to absorb it into, merge forward
         if approx_tokens(content) < MIN_CHUNK_TOKENS and i + 1 < len(sections):
             next_heading, next_content = sections[i + 1]
-            sections[i + 1] = (heading + " / " + next_heading, content + "\n\n" + next_content)
+            sections[i + 1] = (
+                heading + " / " + next_heading,
+                content + "\n\n" + next_content,
+            )
             i += 1
             continue
         merged.append((heading, content))
@@ -117,8 +123,10 @@ def chunk_document(title: str, body: str) -> list[dict]:
                 if not part:
                     continue
                 h3m = re.match(r"^### (.+)", part)
-                subheading = (heading + " › " + h3m.group(1).strip()) if h3m else heading
-                subcontent = part[h3m.end():].strip() if h3m else part
+                subheading = (
+                    (heading + " › " + h3m.group(1).strip()) if h3m else heading
+                )
+                subcontent = part[h3m.end() :].strip() if h3m else part
                 final.append((subheading, subcontent))
         else:
             # Fall back to paragraph splits
@@ -129,28 +137,35 @@ def chunk_document(title: str, body: str) -> list[dict]:
             for para in paragraphs:
                 buffer.append(para)
                 if approx_tokens("\n\n".join(buffer)) >= MAX_CHUNK_TOKENS:
-                    chunk_heading = current_heading if part_idx == 0 else f"{heading} (cont.)"
+                    chunk_heading = (
+                        current_heading if part_idx == 0 else f"{heading} (cont.)"
+                    )
                     final.append((chunk_heading, "\n\n".join(buffer)))
                     buffer = []
                     part_idx += 1
             if buffer:
-                chunk_heading = current_heading if part_idx == 0 else f"{heading} (cont.)"
+                chunk_heading = (
+                    current_heading if part_idx == 0 else f"{heading} (cont.)"
+                )
                 final.append((chunk_heading, "\n\n".join(buffer)))
 
     # Build output chunk dicts with context prefix for embedding
     chunks = []
     for idx, (sec_title, sec_text) in enumerate(final):
         prefixed = f"{title}: {sec_title} — {sec_text}"
-        chunks.append({
-            "section_title": sec_title,
-            "text": sec_text,
-            "prefixed_text": prefixed,
-            "chunk_index": idx,
-        })
+        chunks.append(
+            {
+                "section_title": sec_title,
+                "text": sec_text,
+                "prefixed_text": prefixed,
+                "chunk_index": idx,
+            }
+        )
     return chunks
 
 
 # ── Document loader ───────────────────────────────────────────────────────────
+
 
 def load_all_documents() -> list[dict]:
     """
@@ -164,33 +179,38 @@ def load_all_documents() -> list[dict]:
         if not meta.get("doc_id"):
             print(f"  [SKIP] {md_path.name} — no front matter / doc_id")
             continue
-        docs.append({
-            "path": md_path,
-            "doc_id":   str(meta.get("doc_id", "")),
-            "doc_type": str(meta.get("doc_type", "unknown")),
-            "title":    str(meta.get("title", md_path.stem)),
-            "revision": str(meta.get("revision", "1.0")),
-            # equipment and tags are lists in the YAML; store as comma-joined for ChromaDB
-            "equipment": ", ".join(str(e) for e in (meta.get("equipment") or [])),
-            "tags":      ", ".join(str(t) for t in (meta.get("tags") or [])),
-            "body": body,
-        })
+        docs.append(
+            {
+                "path": md_path,
+                "doc_id": str(meta.get("doc_id", "")),
+                "doc_type": str(meta.get("doc_type", "unknown")),
+                "title": str(meta.get("title", md_path.stem)),
+                "revision": str(meta.get("revision", "1.0")),
+                # equipment and tags are lists in the YAML; store as comma-joined for ChromaDB
+                "equipment": ", ".join(str(e) for e in (meta.get("equipment") or [])),
+                "tags": ", ".join(str(t) for t in (meta.get("tags") or [])),
+                "body": body,
+            }
+        )
     return docs
 
 
 # ── Main build ────────────────────────────────────────────────────────────────
 
+
 def build(rebuild: bool = False) -> None:
     import chromadb
     from sentence_transformers import SentenceTransformer
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Boiler Historian — Plant Document RAG Builder")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Docs dir  : {DOCS_DIR}")
     print(f"DB dir    : {DB_DIR}")
     print(f"Model     : {MODEL_NAME}")
-    print(f"Mode      : {'REBUILD (wipe + re-index)' if rebuild else 'UPSERT (incremental)'}")
+    print(
+        f"Mode      : {'REBUILD (wipe + re-index)' if rebuild else 'UPSERT (incremental)'}"
+    )
     print()
 
     # ── 1. Load documents ─────────────────────────────────────────────────────
@@ -204,15 +224,17 @@ def build(rebuild: bool = False) -> None:
     for doc in docs:
         chunks = chunk_document(doc["title"], doc["body"])
         for c in chunks:
-            c.update({
-                "doc_id":   doc["doc_id"],
-                "doc_type": doc["doc_type"],
-                "title":    doc["title"],
-                "revision": doc["revision"],
-                "equipment": doc["equipment"],
-                "tags":      doc["tags"],
-                "source_path": str(doc["path"].relative_to(PROJECT_DIR)),
-            })
+            c.update(
+                {
+                    "doc_id": doc["doc_id"],
+                    "doc_type": doc["doc_type"],
+                    "title": doc["title"],
+                    "revision": doc["revision"],
+                    "equipment": doc["equipment"],
+                    "tags": doc["tags"],
+                    "source_path": str(doc["path"].relative_to(PROJECT_DIR)),
+                }
+            )
         all_chunks.extend(chunks)
         print(f"  {doc['doc_id']}: {len(chunks)} chunks")
 
@@ -260,19 +282,19 @@ def build(rebuild: bool = False) -> None:
         batch = all_chunks[i : i + batch_size]
         batch_embeddings = embeddings[i : i + batch_size]
 
-        ids        = [f"{c['doc_id']}_chunk_{c['chunk_index']}" for c in batch]
-        documents  = [c["prefixed_text"] for c in batch]
-        metadatas  = [
+        ids = [f"{c['doc_id']}_chunk_{c['chunk_index']}" for c in batch]
+        documents = [c["prefixed_text"] for c in batch]
+        metadatas = [
             {
-                "doc_id":        c["doc_id"],
-                "doc_type":      c["doc_type"],
-                "title":         c["title"],
+                "doc_id": c["doc_id"],
+                "doc_type": c["doc_type"],
+                "title": c["title"],
                 "section_title": c["section_title"],
-                "chunk_index":   c["chunk_index"],
-                "revision":      c["revision"],
-                "equipment":     c["equipment"],
-                "tags":          c["tags"],
-                "source_path":   c["source_path"],
+                "chunk_index": c["chunk_index"],
+                "revision": c["revision"],
+                "equipment": c["equipment"],
+                "tags": c["tags"],
+                "source_path": c["source_path"],
             }
             for c in batch
         ]
@@ -289,9 +311,9 @@ def build(rebuild: bool = False) -> None:
     print(f"\n  Done. Collection '{COLLECTION}' now has {collection.count()} chunks.\n")
 
     # ── Summary ───────────────────────────────────────────────────────────────
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print("BUILD COMPLETE")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  Documents indexed : {len(docs)}")
     print(f"  Total chunks      : {collection.count()}")
     print(f"  Vector DB path    : {DB_DIR}")
@@ -320,7 +342,9 @@ def build(rebuild: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build the plant documentation RAG index")
+    parser = argparse.ArgumentParser(
+        description="Build the plant documentation RAG index"
+    )
     parser.add_argument(
         "--rebuild",
         action="store_true",

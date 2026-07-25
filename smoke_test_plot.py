@@ -12,9 +12,11 @@ import numpy as np
 from datetime import datetime, timedelta
 
 import matplotlib
+
 matplotlib.use("Agg")
 
 from hmi_style import apply_hmi_style, SPINE_COLOR
+
 apply_hmi_style()
 
 from plot_helpers import plot_normalized
@@ -24,8 +26,8 @@ import matplotlib.pyplot as plt
 # ---------------------------------------------------------------------------
 # Synthetic data — 60 minutes of 1-minute samples
 # ---------------------------------------------------------------------------
-N   = 60
-t0  = datetime(2022, 3, 28, 11, 0, 0)
+N = 60
+t0 = datetime(2022, 3, 28, 11, 0, 0)
 timestamps = [t0 + timedelta(minutes=i) for i in range(N)]
 rng = np.random.default_rng(42)
 
@@ -57,9 +59,9 @@ pressure[24:36] += smooth(rng.normal(40, 12, 12))
 
 series = {
     "TE_FURNACE": (timestamps, furnace_temp.tolist()),
-    "FT_STEAM":   (timestamps, steam_flow.tolist()),
-    "LT_SEP":     (timestamps, level.tolist()),
-    "AIR_O2":     (timestamps, o2.tolist()),
+    "FT_STEAM": (timestamps, steam_flow.tolist()),
+    "LT_SEP": (timestamps, level.tolist()),
+    "AIR_O2": (timestamps, o2.tolist()),
     "PT_FURNACE": (timestamps, pressure.tolist()),
 }
 
@@ -67,10 +69,10 @@ tags = list(series.keys())
 
 # Engineering ranges (zero, span) — same concept as PI tag zero/span config
 ranges = {
-    "TE_FURNACE": (700.0,  1000.0),
-    "FT_STEAM":   (0.0,    200.0),
-    "LT_SEP":     (0.0,    100.0),
-    "AIR_O2":     (0.0,    10.0),
+    "TE_FURNACE": (700.0, 1000.0),
+    "FT_STEAM": (0.0, 200.0),
+    "LT_SEP": (0.0, 100.0),
+    "AIR_O2": (0.0, 10.0),
     "PT_FURNACE": (-300.0, 0.0),
 }
 
@@ -85,7 +87,7 @@ fig, ax = plot_normalized(
     title="Smoke test — five tags with independent real-value Y-axes (method='range')",
 )
 
-outdir  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plots")
+outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plots")
 os.makedirs(outdir, exist_ok=True)
 outpath = os.path.join(outdir, "smoke_test.png")
 fig.savefig(outpath, bbox_inches="tight")

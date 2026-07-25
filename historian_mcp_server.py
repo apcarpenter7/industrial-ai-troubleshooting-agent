@@ -27,17 +27,28 @@ from mcp.server.stdio import stdio_server
 from mcp import types
 
 from historian_tools import (
-    tool_list_tags, tool_search_tags, tool_get_data_range,
-    tool_get_tag_data, tool_get_statistics, tool_plot_tags,
+    tool_list_tags,
+    tool_search_tags,
+    tool_get_data_range,
+    tool_get_tag_data,
+    tool_get_statistics,
+    tool_plot_tags,
     PLOTS_DIR,
 )
 from alarm_tools import (
-    tool_alarm_query, tool_alarm_get_statistics, tool_alarm_get_active_at,
-    tool_alarm_search_context, tool_alarm_detect_flood,
+    tool_alarm_query,
+    tool_alarm_get_statistics,
+    tool_alarm_get_active_at,
+    tool_alarm_search_context,
+    tool_alarm_detect_flood,
 )
 from kg_tools import (
-    tool_kg_trace_stream, tool_kg_query_equipment, tool_kg_get_upstream_sensors,
-    tool_kg_find_process_path, tool_kg_get_related_sensors, tool_kg_get_system_sensors,
+    tool_kg_trace_stream,
+    tool_kg_query_equipment,
+    tool_kg_get_upstream_sensors,
+    tool_kg_find_process_path,
+    tool_kg_get_related_sensors,
+    tool_kg_get_system_sensors,
 )
 from rag_tools import rag_search, rag_list_documents, rag_get_document
 import audit_trace
@@ -84,7 +95,10 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Keyword to search for (case-insensitive)"},
+                    "query": {
+                        "type": "string",
+                        "description": "Keyword to search for (case-insensitive)",
+                    },
                 },
                 "required": ["query"],
             },
@@ -111,11 +125,18 @@ async def list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "tag_names": {
-                        "type": "array", "items": {"type": "string"},
+                        "type": "array",
+                        "items": {"type": "string"},
                         "description": "List of tag names to retrieve (e.g. ['TE_8332A', 'PT_8313A'])",
                     },
-                    "start_time": {"type": "string", "description": "Start of time range as ISO datetime string"},
-                    "end_time":   {"type": "string", "description": "End of time range as ISO datetime string"},
+                    "start_time": {
+                        "type": "string",
+                        "description": "Start of time range as ISO datetime string",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "End of time range as ISO datetime string",
+                    },
                     "downsample_minutes": {
                         "type": "integer",
                         "description": (
@@ -138,9 +159,19 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "tag_names":  {"type": "array", "items": {"type": "string"}, "description": "List of tag names"},
-                    "start_time": {"type": "string", "description": "Start of time range as ISO datetime string"},
-                    "end_time":   {"type": "string", "description": "End of time range as ISO datetime string"},
+                    "tag_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of tag names",
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "description": "Start of time range as ISO datetime string",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "End of time range as ISO datetime string",
+                    },
                 },
                 "required": ["tag_names", "start_time", "end_time"],
             },
@@ -155,11 +186,24 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "tag_names":  {"type": "array", "items": {"type": "string"}, "description": "List of tag names to plot"},
-                    "start_time": {"type": "string", "description": "Start of time range as ISO datetime string"},
-                    "end_time":   {"type": "string", "description": "End of time range as ISO datetime string"},
-                    "title":      {"type": "string", "description": "Optional chart title"},
-                    "downsample_minutes": {"type": "integer", "description": "Optional: average data into N-minute intervals"},
+                    "tag_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of tag names to plot",
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "description": "Start of time range as ISO datetime string",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "End of time range as ISO datetime string",
+                    },
+                    "title": {"type": "string", "description": "Optional chart title"},
+                    "downsample_minutes": {
+                        "type": "integer",
+                        "description": "Optional: average data into N-minute intervals",
+                    },
                     "show_normal_range": {
                         "type": "boolean",
                         "description": "If true, draw a shaded band showing the normal operating range. Default false.",
@@ -180,7 +224,10 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "stream_name": {"type": "string", "description": "Name of the stream to trace (e.g. 'Steam', 'FlueGas')"},
+                    "stream_name": {
+                        "type": "string",
+                        "description": "Name of the stream to trace (e.g. 'Steam', 'FlueGas')",
+                    },
                 },
                 "required": ["stream_name"],
             },
@@ -196,7 +243,10 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Natural-language equipment name or description"},
+                    "query": {
+                        "type": "string",
+                        "description": "Natural-language equipment name or description",
+                    },
                 },
                 "required": ["query"],
             },
@@ -211,7 +261,10 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "node_id": {"type": "string", "description": "A tag name (e.g. 'TE_8332A') or equipment name"},
+                    "node_id": {
+                        "type": "string",
+                        "description": "A tag name (e.g. 'TE_8332A') or equipment name",
+                    },
                 },
                 "required": ["node_id"],
             },
@@ -226,8 +279,14 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "from_node": {"type": "string", "description": "Starting equipment (natural language)"},
-                    "to_node":   {"type": "string", "description": "Destination equipment (natural language)"},
+                    "from_node": {
+                        "type": "string",
+                        "description": "Starting equipment (natural language)",
+                    },
+                    "to_node": {
+                        "type": "string",
+                        "description": "Destination equipment (natural language)",
+                    },
                 },
                 "required": ["from_node", "to_node"],
             },
@@ -242,7 +301,10 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "tag_name": {"type": "string", "description": "Tag name to find related sensors for"},
+                    "tag_name": {
+                        "type": "string",
+                        "description": "Tag name to find related sensors for",
+                    },
                 },
                 "required": ["tag_name"],
             },
@@ -257,7 +319,10 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "system_name": {"type": "string", "description": "System name (e.g. 'combustion', 'draft', 'primary air')"},
+                    "system_name": {
+                        "type": "string",
+                        "description": "System name (e.g. 'combustion', 'draft', 'primary air')",
+                    },
                 },
                 "required": ["system_name"],
             },
@@ -274,11 +339,21 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Natural-language search query"},
+                    "query": {
+                        "type": "string",
+                        "description": "Natural-language search query",
+                    },
                     "doc_type": {
                         "type": "string",
                         "description": "Optional: sop, datasheet, maintenance, troubleshooting, controls, safety",
-                        "enum": ["sop", "datasheet", "maintenance", "troubleshooting", "controls", "safety"],
+                        "enum": [
+                            "sop",
+                            "datasheet",
+                            "maintenance",
+                            "troubleshooting",
+                            "controls",
+                            "safety",
+                        ],
                     },
                     "equipment_id": {
                         "type": "string",
@@ -288,7 +363,11 @@ async def list_tools() -> list[types.Tool]:
                         "type": "string",
                         "description": "Optional: restrict to documents referencing a specific sensor tag",
                     },
-                    "top_k": {"type": "integer", "description": "Number of results to return (default 5, max 10)", "default": 5},
+                    "top_k": {
+                        "type": "integer",
+                        "description": "Number of results to return (default 5, max 10)",
+                        "default": 5,
+                    },
                 },
                 "required": ["query"],
             },
@@ -306,7 +385,14 @@ async def list_tools() -> list[types.Tool]:
                     "doc_type": {
                         "type": "string",
                         "description": "Optional: filter to sop, datasheet, maintenance, troubleshooting, controls, safety",
-                        "enum": ["sop", "datasheet", "maintenance", "troubleshooting", "controls", "safety"],
+                        "enum": [
+                            "sop",
+                            "datasheet",
+                            "maintenance",
+                            "troubleshooting",
+                            "controls",
+                            "safety",
+                        ],
                     },
                 },
                 "required": [],
@@ -346,10 +432,23 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "start_time": {"type": "string", "description": "Start of time window as ISO datetime string"},
-                    "end_time":   {"type": "string", "description": "End of time window as ISO datetime string"},
-                    "tag_names":  {"type": "array", "items": {"type": "string"}, "description": "Optional: restrict to these tags"},
-                    "alarm_level": {"type": "string", "description": "Optional: Lo, Hi, LoLo, HiHi, HiHiHi, Alert, Alarm, Trip"},
+                    "start_time": {
+                        "type": "string",
+                        "description": "Start of time window as ISO datetime string",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "End of time window as ISO datetime string",
+                    },
+                    "tag_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: restrict to these tags",
+                    },
+                    "alarm_level": {
+                        "type": "string",
+                        "description": "Optional: Lo, Hi, LoLo, HiHi, HiHiHi, Alert, Alarm, Trip",
+                    },
                     "priority": {
                         "type": "string",
                         "description": "Optional: Critical, High, Medium, Low",
@@ -360,7 +459,10 @@ async def list_tools() -> list[types.Tool]:
                         "description": "ACTIVE, CLEARED, UNACKNOWLEDGED, or ANY (default)",
                         "enum": ["ACTIVE", "CLEARED", "UNACKNOWLEDGED", "ANY"],
                     },
-                    "limit": {"type": "integer", "description": "Maximum rows to return (default 100)"},
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum rows to return (default 100)",
+                    },
                 },
                 "required": ["start_time", "end_time"],
             },
@@ -375,9 +477,19 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "start_time": {"type": "string", "description": "Start of time window as ISO datetime string"},
-                    "end_time":   {"type": "string", "description": "End of time window as ISO datetime string"},
-                    "tag_names":  {"type": "array", "items": {"type": "string"}, "description": "Optional: restrict to these tags"},
+                    "start_time": {
+                        "type": "string",
+                        "description": "Start of time window as ISO datetime string",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "End of time window as ISO datetime string",
+                    },
+                    "tag_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: restrict to these tags",
+                    },
                 },
                 "required": ["start_time", "end_time"],
             },
@@ -392,8 +504,15 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "timestamp": {"type": "string", "description": "The point in time to check, as ISO datetime string"},
-                    "tag_names": {"type": "array", "items": {"type": "string"}, "description": "Optional: restrict to these tags"},
+                    "timestamp": {
+                        "type": "string",
+                        "description": "The point in time to check, as ISO datetime string",
+                    },
+                    "tag_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: restrict to these tags",
+                    },
                 },
                 "required": ["timestamp"],
             },
@@ -409,9 +528,19 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "timestamp": {"type": "string", "description": "The focal event time as ISO datetime string"},
-                    "window_minutes": {"type": "integer", "description": "Search ±this many minutes (default 30)"},
-                    "tag_names": {"type": "array", "items": {"type": "string"}, "description": "Optional: restrict to these tags"},
+                    "timestamp": {
+                        "type": "string",
+                        "description": "The focal event time as ISO datetime string",
+                    },
+                    "window_minutes": {
+                        "type": "integer",
+                        "description": "Search ±this many minutes (default 30)",
+                    },
+                    "tag_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: restrict to these tags",
+                    },
                 },
                 "required": ["timestamp"],
             },
@@ -426,8 +555,14 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "start_time": {"type": "string", "description": "Start of time window as ISO datetime string"},
-                    "end_time":   {"type": "string", "description": "End of time window as ISO datetime string"},
+                    "start_time": {
+                        "type": "string",
+                        "description": "Start of time window as ISO datetime string",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "End of time window as ISO datetime string",
+                    },
                     "threshold_per_10min": {
                         "type": "integer",
                         "description": "Alarms per 10-minute window that defines a flood (default 10, per ISA-18.2)",
@@ -436,7 +571,6 @@ async def list_tools() -> list[types.Tool]:
                 "required": ["start_time", "end_time"],
             },
         ),
-
         # ── Audit Trail ─────────────────────────────────────────────────────
         types.Tool(
             name="audit_start_session",
@@ -485,7 +619,13 @@ async def list_tools() -> list[types.Tool]:
                 "properties": {
                     "reasoning_type": {
                         "type": "string",
-                        "enum": ["hypothesis", "conclusion", "observation", "rejection", "corrective_action"],
+                        "enum": [
+                            "hypothesis",
+                            "conclusion",
+                            "observation",
+                            "rejection",
+                            "corrective_action",
+                        ],
                         "description": "Type of reasoning entry",
                     },
                     "text": {
@@ -519,10 +659,18 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         # ── Audit tools (not traced themselves) ──────────────────────────
         if name == "audit_start_session":
             result = audit_trace.start_session(arguments["question"])
-            return [types.TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+            return [
+                types.TextContent(
+                    type="text", text=json.dumps(result, indent=2, default=str)
+                )
+            ]
         elif name == "audit_end_session":
             result = audit_trace.end_session()
-            return [types.TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+            return [
+                types.TextContent(
+                    type="text", text=json.dumps(result, indent=2, default=str)
+                )
+            ]
         elif name == "audit_log_reasoning":
             session = audit_trace.get_active_session()
             if session is None:
@@ -534,7 +682,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
                 arguments.get("confidence"),
             )
             result = {"step": step, "message": "Reasoning recorded."}
-            return [types.TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+            return [
+                types.TextContent(
+                    type="text", text=json.dumps(result, indent=2, default=str)
+                )
+            ]
 
         # ── Domain tools (always traced) ─────────────────────────────────
         session = audit_trace.ensure_session()
@@ -549,17 +701,24 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             result = tool_get_data_range()
         elif name == "historian_get_tag_data":
             result = tool_get_tag_data(
-                arguments["tag_names"], arguments["start_time"], arguments["end_time"],
+                arguments["tag_names"],
+                arguments["start_time"],
+                arguments["end_time"],
                 arguments.get("downsample_minutes"),
             )
         elif name == "historian_get_statistics":
             result = tool_get_statistics(
-                arguments["tag_names"], arguments["start_time"], arguments["end_time"],
+                arguments["tag_names"],
+                arguments["start_time"],
+                arguments["end_time"],
             )
         elif name == "historian_plot_tags":
             result = tool_plot_tags(
-                arguments["tag_names"], arguments["start_time"], arguments["end_time"],
-                arguments.get("title"), arguments.get("downsample_minutes"),
+                arguments["tag_names"],
+                arguments["start_time"],
+                arguments["end_time"],
+                arguments.get("title"),
+                arguments.get("downsample_minutes"),
                 arguments.get("show_normal_range", False),
             )
 
@@ -571,7 +730,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         elif name == "kg_get_upstream_sensors":
             result = tool_kg_get_upstream_sensors(arguments["node_id"])
         elif name == "kg_find_process_path":
-            result = tool_kg_find_process_path(arguments["from_node"], arguments["to_node"])
+            result = tool_kg_find_process_path(
+                arguments["from_node"], arguments["to_node"]
+            )
         elif name == "kg_get_related_sensors":
             result = tool_kg_get_related_sensors(arguments["tag_name"])
         elif name == "kg_get_system_sensors":
@@ -594,7 +755,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         # Alarm Log
         elif name == "alarm_query":
             result = tool_alarm_query(
-                arguments["start_time"], arguments["end_time"],
+                arguments["start_time"],
+                arguments["end_time"],
                 tag_names=arguments.get("tag_names"),
                 alarm_level=arguments.get("alarm_level"),
                 priority=arguments.get("priority"),
@@ -603,7 +765,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             )
         elif name == "alarm_get_statistics":
             result = tool_alarm_get_statistics(
-                arguments["start_time"], arguments["end_time"],
+                arguments["start_time"],
+                arguments["end_time"],
                 tag_names=arguments.get("tag_names"),
             )
         elif name == "alarm_get_active_at":
@@ -619,7 +782,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             )
         elif name == "alarm_detect_flood":
             result = tool_alarm_detect_flood(
-                arguments["start_time"], arguments["end_time"],
+                arguments["start_time"],
+                arguments["end_time"],
                 threshold_per_10min=int(arguments.get("threshold_per_10min", 10)),
             )
 
@@ -635,7 +799,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             success=True,
         )
 
-        return [types.TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+        return [
+            types.TextContent(
+                type="text", text=json.dumps(result, indent=2, default=str)
+            )
+        ]
 
     except Exception as exc:
         duration_ms = (time.perf_counter() - t0) * 1000 if "t0" in locals() else 0
@@ -694,4 +862,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

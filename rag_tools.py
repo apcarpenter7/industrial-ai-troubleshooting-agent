@@ -26,10 +26,10 @@ from typing import Optional
 
 # ── Paths (same as build_docs_db.py) ─────────────────────────────────────────
 PROJECT_DIR = Path(__file__).parent
-DOCS_DIR    = PROJECT_DIR / "RAG docs"
-DB_DIR      = PROJECT_DIR / "rag_vector_db"
-COLLECTION  = "plant_docs"
-MODEL_NAME  = "BAAI/bge-small-en-v1.5"
+DOCS_DIR = PROJECT_DIR / "RAG docs"
+DB_DIR = PROJECT_DIR / "rag_vector_db"
+COLLECTION = "plant_docs"
+MODEL_NAME = "BAAI/bge-small-en-v1.5"
 
 # BGE query prefix — must match what was used during indexing in build_docs_db.py
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
@@ -84,6 +84,7 @@ def _get_rag() -> tuple:
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def rag_search(
     query: str,
@@ -184,17 +185,23 @@ def rag_search(
             prefix_end = chunk_text.index(" — ") + 3
             chunk_text = chunk_text[prefix_end:]
 
-        output.append({
-            "doc_id":        doc_id,
-            "doc_type":      meta.get("doc_type", ""),
-            "title":         meta.get("title", ""),
-            "section_title": meta.get("section_title", ""),
-            "revision":      meta.get("revision", ""),
-            "chunk_text":    chunk_text.strip(),
-            "relevance_score": relevance,
-            "equipment":     [e.strip() for e in meta.get("equipment", "").split(",") if e.strip()],
-            "tags":          [t.strip() for t in meta.get("tags", "").split(",") if t.strip()],
-        })
+        output.append(
+            {
+                "doc_id": doc_id,
+                "doc_type": meta.get("doc_type", ""),
+                "title": meta.get("title", ""),
+                "section_title": meta.get("section_title", ""),
+                "revision": meta.get("revision", ""),
+                "chunk_text": chunk_text.strip(),
+                "relevance_score": relevance,
+                "equipment": [
+                    e.strip() for e in meta.get("equipment", "").split(",") if e.strip()
+                ],
+                "tags": [
+                    t.strip() for t in meta.get("tags", "").split(",") if t.strip()
+                ],
+            }
+        )
 
         if len(output) >= top_k:
             break
@@ -234,12 +241,16 @@ def rag_list_documents(doc_type: Optional[str] = None) -> list[dict]:
         did = meta["doc_id"]
         if did not in docs:
             docs[did] = {
-                "doc_id":    did,
-                "doc_type":  meta.get("doc_type", ""),
-                "title":     meta.get("title", ""),
-                "revision":  meta.get("revision", ""),
-                "equipment": [e.strip() for e in meta.get("equipment", "").split(",") if e.strip()],
-                "tags":      [t.strip() for t in meta.get("tags", "").split(",") if t.strip()],
+                "doc_id": did,
+                "doc_type": meta.get("doc_type", ""),
+                "title": meta.get("title", ""),
+                "revision": meta.get("revision", ""),
+                "equipment": [
+                    e.strip() for e in meta.get("equipment", "").split(",") if e.strip()
+                ],
+                "tags": [
+                    t.strip() for t in meta.get("tags", "").split(",") if t.strip()
+                ],
                 "chunk_count": 0,
             }
         docs[did]["chunk_count"] += 1
@@ -274,8 +285,10 @@ def rag_get_document(doc_id: str) -> dict:
     )
     metadatas = results.get("metadatas") or []
     if not metadatas:
-        return {"error": f"Document '{doc_id}' not found in the RAG index. "
-                         "Use docs_list_documents() to see available doc_ids."}
+        return {
+            "error": f"Document '{doc_id}' not found in the RAG index. "
+            "Use docs_list_documents() to see available doc_ids."
+        }
 
     meta = metadatas[0]
     source_path = PROJECT_DIR / meta.get("source_path", "")
@@ -284,18 +297,22 @@ def rag_get_document(doc_id: str) -> dict:
         # Fallback: search DOCS_DIR for a file whose stem matches doc_id
         matches = list(DOCS_DIR.rglob(f"{doc_id}.md"))
         if not matches:
-            return {"error": f"Source file for '{doc_id}' not found on disk at {source_path}."}
+            return {
+                "error": f"Source file for '{doc_id}' not found on disk at {source_path}."
+            }
         source_path = matches[0]
 
     full_text = source_path.read_text(encoding="utf-8")
 
     return {
-        "doc_id":      doc_id,
-        "doc_type":    meta.get("doc_type", ""),
-        "title":       meta.get("title", ""),
-        "revision":    meta.get("revision", ""),
-        "equipment":   [e.strip() for e in meta.get("equipment", "").split(",") if e.strip()],
-        "tags":        [t.strip() for t in meta.get("tags", "").split(",") if t.strip()],
+        "doc_id": doc_id,
+        "doc_type": meta.get("doc_type", ""),
+        "title": meta.get("title", ""),
+        "revision": meta.get("revision", ""),
+        "equipment": [
+            e.strip() for e in meta.get("equipment", "").split(",") if e.strip()
+        ],
+        "tags": [t.strip() for t in meta.get("tags", "").split(",") if t.strip()],
         "source_path": str(source_path.relative_to(PROJECT_DIR)),
-        "full_text":   full_text,
+        "full_text": full_text,
     }

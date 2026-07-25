@@ -29,6 +29,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -47,30 +48,55 @@ PLOTS_DIR = os.path.join(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args():
-    p = argparse.ArgumentParser(description="ML fault detection on boiler historian data")
+    p = argparse.ArgumentParser(
+        description="ML fault detection on boiler historian data"
+    )
     p.add_argument("--downsample-minutes", type=int, default=1)
     p.add_argument("--noc-tag", default="TE_8332A")
     p.add_argument("--noc-min", type=float, default=530.0)
     p.add_argument("--noc-max", type=float, default=545.0)
-    p.add_argument("--contamination", type=float, default=0.086,
-                   help="Expected anomaly fraction for Isolation Forest threshold")
-    p.add_argument("--n-estimators", type=int, default=200,
-                   help="Number of trees in Isolation Forest")
-    p.add_argument("--top-n-events", type=int, default=5,
-                   help="Number of worst fault periods to surface in JSON output")
-    p.add_argument("--start-time", type=str, default=None,
-                   help="Start timestamp filter (YYYY-MM-DD HH:MM:SS)")
-    p.add_argument("--end-time", type=str, default=None,
-                   help="End timestamp filter (YYYY-MM-DD HH:MM:SS)")
-    p.add_argument("--no-xgb", action="store_true",
-                   help="Skip XGBoost feature importance step")
+    p.add_argument(
+        "--contamination",
+        type=float,
+        default=0.086,
+        help="Expected anomaly fraction for Isolation Forest threshold",
+    )
+    p.add_argument(
+        "--n-estimators",
+        type=int,
+        default=200,
+        help="Number of trees in Isolation Forest",
+    )
+    p.add_argument(
+        "--top-n-events",
+        type=int,
+        default=5,
+        help="Number of worst fault periods to surface in JSON output",
+    )
+    p.add_argument(
+        "--start-time",
+        type=str,
+        default=None,
+        help="Start timestamp filter (YYYY-MM-DD HH:MM:SS)",
+    )
+    p.add_argument(
+        "--end-time",
+        type=str,
+        default=None,
+        help="End timestamp filter (YYYY-MM-DD HH:MM:SS)",
+    )
+    p.add_argument(
+        "--no-xgb", action="store_true", help="Skip XGBoost feature importance step"
+    )
     return p.parse_args()
 
 
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
+
 
 def load_data(downsample_minutes=1, start_time=None, end_time=None):
     con = duckdb.connect(DB_PATH, read_only=True)
@@ -112,7 +138,10 @@ def load_data(downsample_minutes=1, start_time=None, end_time=None):
 # Isolation Forest
 # ---------------------------------------------------------------------------
 
-def fit_isolation_forest(df_noc, n_estimators=200, contamination=0.086, random_state=42):
+
+def fit_isolation_forest(
+    df_noc, n_estimators=200, contamination=0.086, random_state=42
+):
     scaler = StandardScaler()
     X_noc = scaler.fit_transform(df_noc.values)
     iforest = IsolationForest(
@@ -138,6 +167,7 @@ def score_all(df, scaler, iforest):
 # Fault period detection
 # ---------------------------------------------------------------------------
 
+
 def find_fault_periods(timestamps, scores, predictions):
     anomalous = predictions == -1
     periods = []
@@ -161,21 +191,24 @@ def find_fault_periods(timestamps, scores, predictions):
 def _append_period(periods, timestamps, scores, s, e):
     score_slice = scores[s : e + 1]
     peak_idx = s + int(np.argmax(score_slice))
-    periods.append({
-        "start": str(timestamps[s]),
-        "end": str(timestamps[e]),
-        "duration_min": round(
-            (timestamps[e] - timestamps[s]).total_seconds() / 60, 1
-        ),
-        "mean_score": round(float(np.mean(score_slice)), 4),
-        "max_score": round(float(np.max(score_slice)), 4),
-        "peak_idx": peak_idx,
-    })
+    periods.append(
+        {
+            "start": str(timestamps[s]),
+            "end": str(timestamps[e]),
+            "duration_min": round(
+                (timestamps[e] - timestamps[s]).total_seconds() / 60, 1
+            ),
+            "mean_score": round(float(np.mean(score_slice)), 4),
+            "max_score": round(float(np.max(score_slice)), 4),
+            "peak_idx": peak_idx,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # XGBoost feature importance
 # ---------------------------------------------------------------------------
+
 
 def fit_xgb_importance(df, noc_tag, noc_min, noc_max, no_xgb=False):
     """
@@ -191,7 +224,9 @@ def fit_xgb_importance(df, noc_tag, noc_min, noc_max, no_xgb=False):
     y = ((df[noc_tag] < noc_min) | (df[noc_tag] > noc_max)).astype(int).values
 
     if y.sum() == 0 or y.sum() == len(y):
-        print("WARNING: XGBoost skipped — all labels are the same class.", file=sys.stderr)
+        print(
+            "WARNING: XGBoost skipped — all labels are the same class.", file=sys.stderr
+        )
         return [], "skipped"
 
     # Try XGBoost first, falling back to GradientBoostingClassifier on ANY failure.
@@ -200,6 +235,7 @@ def fit_xgb_importance(df, noc_tag, noc_min, noc_max, no_xgb=False):
     # that is not an ImportError, so catching only ImportError would let it crash.
     try:
         from xgboost import XGBClassifier
+
         clf = XGBClassifier(
             n_estimators=200,
             max_depth=4,
@@ -214,9 +250,13 @@ def fit_xgb_importance(df, noc_tag, noc_min, noc_max, no_xgb=False):
         clf.fit(X, y)
         model_name = "XGBoostClassifier"
     except Exception as exc:
-        print(f"xgboost unavailable ({type(exc).__name__}: {exc}); "
-              "falling back to GradientBoostingClassifier.", file=sys.stderr)
+        print(
+            f"xgboost unavailable ({type(exc).__name__}: {exc}); "
+            "falling back to GradientBoostingClassifier.",
+            file=sys.stderr,
+        )
         from sklearn.ensemble import GradientBoostingClassifier
+
         clf = GradientBoostingClassifier(
             n_estimators=200,
             max_depth=4,
@@ -243,12 +283,14 @@ def fit_xgb_importance(df, noc_tag, noc_min, noc_max, no_xgb=False):
 # Plots
 # ---------------------------------------------------------------------------
 
+
 def _ensure_plots_dir():
     os.makedirs(PLOTS_DIR, exist_ok=True)
 
 
-def plot_monitoring(timestamps, te_values, scores, predictions,
-                    noc_min, noc_max, noc_tag):
+def plot_monitoring(
+    timestamps, te_values, scores, predictions, noc_min, noc_max, noc_tag
+):
     _ensure_plots_dir()
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
@@ -257,8 +299,13 @@ def plot_monitoring(timestamps, te_values, scores, predictions,
 
     # --- Panel 1: NOC tag ---
     ax1.plot(timestamps, te_values, linewidth=0.6, color="#1f77b4")
-    ax1.axhspan(noc_min, noc_max, alpha=0.15, color="green",
-                label=f"Normal ({noc_min}–{noc_max}°C)")
+    ax1.axhspan(
+        noc_min,
+        noc_max,
+        alpha=0.15,
+        color="green",
+        label=f"Normal ({noc_min}–{noc_max}°C)",
+    )
     ax1.set_ylabel(f"{noc_tag} (°C)")
     ax1.set_title("Boiler Outlet Steam Temperature", fontsize=9, loc="left")
     ax1.legend(fontsize=8, loc="upper right")
@@ -266,12 +313,18 @@ def plot_monitoring(timestamps, te_values, scores, predictions,
 
     # --- Panel 2: Anomaly score (0 = anomaly boundary, positive = anomalous) ---
     ax2.plot(timestamps, scores, linewidth=0.6, color="#1f77b4", label="Anomaly score")
-    ax2.axhline(y=0, color="#d62728", linestyle="--", linewidth=1,
-                label="Anomaly threshold (score = 0)")
+    ax2.axhline(
+        y=0,
+        color="#d62728",
+        linestyle="--",
+        linewidth=1,
+        label="Anomaly threshold (score = 0)",
+    )
     mask_anom = scores > 0
     if np.any(mask_anom):
-        ax2.scatter(ts_arr[mask_anom], scores[mask_anom],
-                    s=3, c="#d62728", zorder=5, alpha=0.5)
+        ax2.scatter(
+            ts_arr[mask_anom], scores[mask_anom], s=3, c="#d62728", zorder=5, alpha=0.5
+        )
     ax2.set_ylabel("Anomaly Score  (positive = fault)")
     ax2.set_title("Isolation Forest Anomaly Score", fontsize=9, loc="left")
     ax2.legend(fontsize=8, loc="upper right")
@@ -295,7 +348,8 @@ def plot_monitoring(timestamps, te_values, scores, predictions,
     fig.autofmt_xdate(rotation=30)
     fig.suptitle(
         "ML Fault Detection — Isolation Forest Monitoring (5-Day Dataset)",
-        fontsize=11, fontweight="bold",
+        fontsize=11,
+        fontweight="bold",
     )
     plt.tight_layout()
 
@@ -336,10 +390,17 @@ def plot_feature_importance(top_features, tag_meta, model_name, noc_tag, top_n=1
     ax.set_title(
         f"{model_name} Feature Importance\n"
         f"Predicting {noc_tag} fault (out of [530–545°C]) from remaining tags",
-        fontsize=10, fontweight="bold",
+        fontsize=10,
+        fontweight="bold",
     )
-    ax.axvline(x=uniform_baseline, color="grey", linestyle="--", linewidth=0.8,
-               alpha=0.6, label=f"Uniform baseline ({uniform_baseline:.3f})")
+    ax.axvline(
+        x=uniform_baseline,
+        color="grey",
+        linestyle="--",
+        linewidth=0.8,
+        alpha=0.6,
+        label=f"Uniform baseline ({uniform_baseline:.3f})",
+    )
     ax.legend(fontsize=8)
     ax.grid(True, alpha=0.3, axis="x")
     plt.tight_layout()
@@ -354,6 +415,7 @@ def plot_feature_importance(top_features, tag_meta, model_name, noc_tag, top_n=1
 # ---------------------------------------------------------------------------
 # Fault report
 # ---------------------------------------------------------------------------
+
 
 def generate_fault_report(periods, total_rows, anomaly_rate_pct):
     _ensure_plots_dir()
@@ -388,6 +450,7 @@ def generate_fault_report(periods, total_rows, anomaly_rate_pct):
 # Main pipeline
 # ---------------------------------------------------------------------------
 
+
 def main():
     args = parse_args()
 
@@ -411,7 +474,7 @@ def main():
     df_noc = df[noc_mask]
     print(
         f"NOC split: {len(df_noc)}/{len(df)} rows "
-        f"({len(df_noc)/len(df)*100:.1f}%) in normal range.",
+        f"({len(df_noc) / len(df) * 100:.1f}%) in normal range.",
         file=sys.stderr,
     )
 

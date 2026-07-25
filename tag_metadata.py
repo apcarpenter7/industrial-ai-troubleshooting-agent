@@ -227,12 +227,20 @@ TAG_METADATA = {
 
 # Convenience groupings for natural language matching
 SENSOR_TYPE_GROUPS = {
-    "temperature": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Temperature"],
+    "temperature": [
+        k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Temperature"
+    ],
     "pressure": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Pressure"],
     "flow": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Flow"],
     "oxygen": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Oxygen"],
-    "vibration": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Vibration"],
-    "differential_pressure": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Differential Pressure"],
+    "vibration": [
+        k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Vibration"
+    ],
+    "differential_pressure": [
+        k
+        for k, v in TAG_METADATA.items()
+        if v["sensor_type"] == "Differential Pressure"
+    ],
     "motor": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Motor"],
     "valve": [k for k, v in TAG_METADATA.items() if v["sensor_type"] == "Valve"],
 }

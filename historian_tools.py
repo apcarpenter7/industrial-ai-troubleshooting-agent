@@ -14,16 +14,19 @@ from datetime import datetime
 
 import duckdb
 import matplotlib
+
 matplotlib.use("Agg")
 from hmi_style import apply_hmi_style, TICK_COLOR, SPINE_COLOR
+
 apply_hmi_style()
 from plot_helpers import plot_normalized
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH     = os.path.join(PROJECT_DIR, "boiler_historian.duckdb")
-PLOTS_DIR   = os.path.join(PROJECT_DIR, "plots")
+DB_PATH = os.path.join(PROJECT_DIR, "boiler_historian.duckdb")
+PLOTS_DIR = os.path.join(PROJECT_DIR, "plots")
 
 _JUNCTION = r"C:\boiler"
+
 
 def _short_path(p: str) -> str:
     """Replace the long project root with the C:\\boiler junction, but ONLY when that
@@ -34,8 +37,9 @@ def _short_path(p: str) -> str:
     at a *different* copy of the project, substituting it would produce a path that does
     not resolve, so we return the real absolute path unchanged."""
     try:
-        if os.path.exists(_JUNCTION) and \
-                os.path.realpath(_JUNCTION) == os.path.realpath(PROJECT_DIR):
+        if os.path.exists(_JUNCTION) and os.path.realpath(
+            _JUNCTION
+        ) == os.path.realpath(PROJECT_DIR):
             rel = os.path.relpath(p, PROJECT_DIR)
             return os.path.join(_JUNCTION, rel)
     except (ValueError, OSError):
@@ -47,12 +51,15 @@ def _short_path(p: str) -> str:
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_time(ts: str) -> datetime:
     """Parse and validate an ISO datetime string. Raises ValueError on bad input."""
     try:
         return datetime.fromisoformat(ts.strip())
     except ValueError:
-        raise ValueError(f"Invalid datetime: {ts!r}. Expected e.g. '2022-03-29 08:00:00'")
+        raise ValueError(
+            f"Invalid datetime: {ts!r}. Expected e.g. '2022-03-29 08:00:00'"
+        )
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
@@ -67,19 +74,23 @@ def get_connection() -> duckdb.DuckDBPyConnection:
 def _validate_tags(con: duckdb.DuckDBPyConnection, tag_names: list[str]) -> None:
     """Raise ValueError listing any tag names not present as columns in historian_data."""
     valid_cols = {
-        r[0] for r in con.execute(
+        r[0]
+        for r in con.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name = 'historian_data'"
         ).fetchall()
     }
     valid_cols.discard("timestamp")
     bad_tags = [t for t in tag_names if t not in valid_cols]
     if bad_tags:
-        raise ValueError(f"Unknown tag(s): {bad_tags}. Use historian_list_tags to see available tags.")
+        raise ValueError(
+            f"Unknown tag(s): {bad_tags}. Use historian_list_tags to see available tags."
+        )
 
 
 # ---------------------------------------------------------------------------
 # Tool implementations
 # ---------------------------------------------------------------------------
+
 
 def tool_list_tags() -> list[dict]:
     con = get_connection()
@@ -91,12 +102,12 @@ def tool_list_tags() -> list[dict]:
     con.close()
     return [
         {
-            "tag_name":    r[0],
+            "tag_name": r[0],
             "description": r[1],
-            "units":       r[2],
+            "units": r[2],
             "sensor_type": r[3],
-            "normal_min":  r[4],
-            "normal_max":  r[5],
+            "normal_min": r[4],
+            "normal_max": r[5],
         }
         for r in rows
     ]
@@ -105,23 +116,26 @@ def tool_list_tags() -> list[dict]:
 def tool_search_tags(query: str) -> list[dict]:
     con = get_connection()
     q = f"%{query.lower()}%"
-    rows = con.execute("""
+    rows = con.execute(
+        """
         SELECT tag_name, description, units, sensor_type, normal_min, normal_max
         FROM tags
         WHERE LOWER(tag_name)    LIKE ?
            OR LOWER(description) LIKE ?
            OR LOWER(sensor_type) LIKE ?
         ORDER BY sensor_type, tag_name
-    """, [q, q, q]).fetchall()
+    """,
+        [q, q, q],
+    ).fetchall()
     con.close()
     return [
         {
-            "tag_name":    r[0],
+            "tag_name": r[0],
             "description": r[1],
-            "units":       r[2],
+            "units": r[2],
             "sensor_type": r[3],
-            "normal_min":  r[4],
-            "normal_max":  r[5],
+            "normal_min": r[4],
+            "normal_max": r[5],
         }
         for r in rows
     ]
@@ -138,8 +152,8 @@ def tool_get_data_range() -> dict:
     con.close()
     return {
         "earliest_timestamp": str(row[0]),
-        "latest_timestamp":   str(row[1]),
-        "total_rows":         row[2],
+        "latest_timestamp": str(row[1]),
+        "total_rows": row[2],
         "note": (
             "This is a static 5-day snapshot. Treat 'latest_timestamp' as "
             "'now' when the user asks about relative time periods like "
@@ -155,11 +169,15 @@ def tool_get_tag_data(
     downsample_minutes: int | None = None,
 ) -> dict:
     if downsample_minutes is not None:
-        if not isinstance(downsample_minutes, int) or not (1 <= downsample_minutes <= 1440):
-            raise ValueError("downsample_minutes must be an integer between 1 and 1440.")
+        if not isinstance(downsample_minutes, int) or not (
+            1 <= downsample_minutes <= 1440
+        ):
+            raise ValueError(
+                "downsample_minutes must be an integer between 1 and 1440."
+            )
 
     start_dt = _parse_time(start_time)
-    end_dt   = _parse_time(end_time)
+    end_dt = _parse_time(end_time)
 
     con = get_connection()
     _validate_tags(con, tag_names)
@@ -212,12 +230,12 @@ def tool_get_tag_data(
     data = [dict(zip(col_names, row)) for row in rows]
 
     return {
-        "tag_names":          tag_names,
-        "start_time":         start_time,
-        "end_time":           end_time,
+        "tag_names": tag_names,
+        "start_time": start_time,
+        "end_time": end_time,
         "downsample_minutes": downsample_minutes,
-        "row_count":          len(data),
-        "data":               data,
+        "row_count": len(data),
+        "data": data,
     }
 
 
@@ -227,14 +245,15 @@ def tool_get_statistics(
     end_time: str,
 ) -> dict:
     start_dt = _parse_time(start_time)
-    end_dt   = _parse_time(end_time)
+    end_dt = _parse_time(end_time)
 
     con = get_connection()
     _validate_tags(con, tag_names)
 
     results = {}
     for tag in tag_names:
-        row = con.execute(f"""
+        row = con.execute(
+            f"""
             SELECT
                 MIN("{tag}")    AS min_val,
                 MAX("{tag}")    AS max_val,
@@ -243,28 +262,31 @@ def tool_get_statistics(
                 COUNT("{tag}")  AS count_val
             FROM historian_data
             WHERE timestamp >= ? AND timestamp <= ?
-        """, [start_dt, end_dt]).fetchone()
+        """,
+            [start_dt, end_dt],
+        ).fetchone()
 
         meta = con.execute(
-            "SELECT description, units, normal_min, normal_max FROM tags WHERE tag_name = ?", [tag]
+            "SELECT description, units, normal_min, normal_max FROM tags WHERE tag_name = ?",
+            [tag],
         ).fetchone()
 
         results[tag] = {
             "description": meta[0] if meta else None,
-            "units":       meta[1] if meta else None,
-            "min":         round(row[0], 4) if row[0] is not None else None,
-            "max":         round(row[1], 4) if row[1] is not None else None,
-            "mean":        round(row[2], 4) if row[2] is not None else None,
-            "std":         round(row[3], 4) if row[3] is not None else None,
-            "count":       row[4],
-            "normal_min":  meta[2] if meta else None,
-            "normal_max":  meta[3] if meta else None,
+            "units": meta[1] if meta else None,
+            "min": round(row[0], 4) if row[0] is not None else None,
+            "max": round(row[1], 4) if row[1] is not None else None,
+            "mean": round(row[2], 4) if row[2] is not None else None,
+            "std": round(row[3], 4) if row[3] is not None else None,
+            "count": row[4],
+            "normal_min": meta[2] if meta else None,
+            "normal_max": meta[3] if meta else None,
         }
 
     con.close()
     return {
         "start_time": start_time,
-        "end_time":   end_time,
+        "end_time": end_time,
         "statistics": results,
     }
 
@@ -338,13 +360,17 @@ def tool_plot_tags(
     show_normal_range: bool = False,
 ) -> dict:
     if downsample_minutes is not None:
-        if not isinstance(downsample_minutes, int) or not (1 <= downsample_minutes <= 1440):
-            raise ValueError("downsample_minutes must be an integer between 1 and 1440.")
+        if not isinstance(downsample_minutes, int) or not (
+            1 <= downsample_minutes <= 1440
+        ):
+            raise ValueError(
+                "downsample_minutes must be an integer between 1 and 1440."
+            )
 
     import matplotlib.pyplot as plt
 
     start_dt = _parse_time(start_time)
-    end_dt   = _parse_time(end_time)
+    end_dt = _parse_time(end_time)
 
     con = get_connection()
     _validate_tags(con, tag_names)
@@ -383,7 +409,12 @@ def tool_plot_tags(
     ).fetchall()
     con.close()
     meta = {
-        r[0]: {"description": r[1], "units": r[2], "normal_min": r[3], "normal_max": r[4]}
+        r[0]: {
+            "description": r[1],
+            "units": r[2],
+            "normal_min": r[3],
+            "normal_max": r[4],
+        }
         for r in meta_rows
     }
 
@@ -391,7 +422,7 @@ def tool_plot_tags(
     # limits stored; fall back to "minmax" when any tag is unconfigured.
     ranges: dict[str, tuple[float, float]] = {}
     for tag in tag_names:
-        m  = meta.get(tag, {})
+        m = meta.get(tag, {})
         lo = m.get("normal_min")
         hi = m.get("normal_max")
         if lo is not None and hi is not None:
@@ -404,7 +435,8 @@ def tool_plot_tags(
         ranges = None  # type: ignore[assignment]
 
     fig, ax = plot_normalized(
-        series, tag_names,
+        series,
+        tag_names,
         method=method,
         ranges=ranges,
     )
@@ -416,34 +448,50 @@ def tool_plot_tags(
         norm_lo = first_meta.get("normal_min")
         norm_hi = first_meta.get("normal_max")
         if norm_lo is not None:
-            ax.axhline(float(norm_lo), color=SPINE_COLOR, linewidth=0.8, linestyle=":", zorder=1)
+            ax.axhline(
+                float(norm_lo),
+                color=SPINE_COLOR,
+                linewidth=0.8,
+                linestyle=":",
+                zorder=1,
+            )
         if norm_hi is not None:
-            ax.axhline(float(norm_hi), color=SPINE_COLOR, linewidth=0.8, linestyle=":", zorder=1)
+            ax.axhline(
+                float(norm_hi),
+                color=SPINE_COLOR,
+                linewidth=0.8,
+                linestyle=":",
+                zorder=1,
+            )
 
     resample_note = (
         f"  ·  downsampled to {downsample_minutes}-min min/max envelope"
-        if downsample_minutes else "  ·  raw 5-sec data"
+        if downsample_minutes
+        else "  ·  raw 5-sec data"
     )
     fig.text(
-        0.5, -0.02,
+        0.5,
+        -0.02,
         f"{start_time}  →  {end_time}{resample_note}",
-        ha="center", fontsize=7.5, color=TICK_COLOR,
+        ha="center",
+        fontsize=7.5,
+        color=TICK_COLOR,
         transform=fig.transFigure,
     )
 
     os.makedirs(PLOTS_DIR, exist_ok=True)
-    safe_tags     = "_".join(re.sub(r"[^\w\-]", "", t) for t in tag_names)
+    safe_tags = "_".join(re.sub(r"[^\w\-]", "", t) for t in tag_names)
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filepath      = os.path.join(PLOTS_DIR, f"{safe_tags}_{timestamp_str}.png")
+    filepath = os.path.join(PLOTS_DIR, f"{safe_tags}_{timestamp_str}.png")
     fig.savefig(filepath, bbox_inches="tight")
     plt.close(fig)
 
     short = _short_path(filepath)
     return {
-        "plot_path":   short,
-        "message":     f"Plot saved to {short}. Open this file to view the chart.",
-        "tag_names":   tag_names,
-        "start_time":  start_time,
-        "end_time":    end_time,
+        "plot_path": short,
+        "message": f"Plot saved to {short}. Open this file to view the chart.",
+        "tag_names": tag_names,
+        "start_time": start_time,
+        "end_time": end_time,
         "data_points": row_count,
     }

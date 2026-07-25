@@ -35,6 +35,7 @@ _AXIS_OFFSET_PTS = 55
 def _extract(data: Union["pd.DataFrame", SeriesDict], tag: str) -> tuple[list, list]:
     try:
         import pandas as pd
+
         if isinstance(data, pd.DataFrame):
             col = data[tag].dropna()
             return data.loc[col.index, "timestamp"].tolist(), col.tolist()
@@ -46,7 +47,7 @@ def _extract(data: Union["pd.DataFrame", SeriesDict], tag: str) -> tuple[list, l
 def _pad(lo: float, hi: float, frac: float = 0.08) -> tuple[float, float]:
     """Add symmetric padding so traces don't sit on the axis edges."""
     span = (hi - lo) or abs(lo) or 1.0
-    pad  = span * frac
+    pad = span * frac
     return lo - pad, hi + pad
 
 
@@ -100,14 +101,14 @@ def plot_normalized(
         fig, host = plt.subplots(figsize=(14, 5))
     else:
         host = ax
-        fig  = ax.figure
+        fig = ax.figure
 
     # The host axes draws the background and the first trace.
     # All twin axes share the same x-axis and the same rectangular plot area.
     host.set_xlabel("")
 
     color_cycle = cycle(PALETTE)
-    all_axes    = []  # (twin_ax, color, tag) in order
+    all_axes = []  # (twin_ax, color, tag) in order
 
     for i, tag in enumerate(tags):
         color = next(color_cycle)
@@ -122,11 +123,11 @@ def plot_normalized(
             lo, hi = _pad(min(zero, data_lo), max(span, data_hi))
             mid_label = None
         elif method == "zscore":
-            mu    = float(np.nanmean(arr))
+            mu = float(np.nanmean(arr))
             sigma = float(np.nanstd(arr)) or 1.0
             zero, span = mu - 3 * sigma, mu + 3 * sigma
             lo, hi = _pad(zero, span)
-            mid_label = mu          # draw a mean reference line
+            mid_label = mu  # draw a mean reference line
         else:  # minmax
             zero = float(np.nanmin(arr))
             span = float(np.nanmax(arr))
@@ -143,10 +144,10 @@ def plot_normalized(
             cur_ax.spines["left"].set_visible(False)
 
         # Alternate: even indices → left, odd → right
-        side  = "left" if i % 2 == 0 else "right"
+        side = "left" if i % 2 == 0 else "right"
         # How many axes are already on this side?
         same_side = sum(1 for _, _, _, s in all_axes if s == side)
-        offset    = same_side * _AXIS_OFFSET_PTS   # 0 for the first on each side
+        offset = same_side * _AXIS_OFFSET_PTS  # 0 for the first on each side
 
         if i == 0:
             # Host axis — already on the left at offset 0, no repositioning needed
@@ -175,8 +176,14 @@ def plot_normalized(
 
         # Mean reference line for zscore mode
         if mid_label is not None:
-            cur_ax.axhline(mid_label, color=color, linewidth=0.6,
-                           linestyle="--", alpha=0.5, zorder=2)
+            cur_ax.axhline(
+                mid_label,
+                color=color,
+                linewidth=0.6,
+                linestyle="--",
+                alpha=0.5,
+                zorder=2,
+            )
 
         all_axes.append((cur_ax, color, tag, side))
 
@@ -191,24 +198,25 @@ def plot_normalized(
         lbl.set_ha("right")
 
     # ── Legend — one entry per tag, colour-matched, just above axes ──────────
-    legend_lines  = [a[0].get_lines()[0] for a in all_axes]
+    legend_lines = [a[0].get_lines()[0] for a in all_axes]
     legend_labels = []
     for cur_ax, color, tag, side in all_axes:
-        arr    = np.array(_extract(df, tag)[1], dtype=float)
+        arr = np.array(_extract(df, tag)[1], dtype=float)
         lo_val = float(np.nanmin(arr))
         hi_val = float(np.nanmax(arr))
         if method == "range" and ranges:
             zero, span = ranges[tag]
             legend_labels.append(f"{tag}  [{zero:.4g} – {span:.4g}]")
         elif method == "zscore":
-            mu    = float(np.nanmean(arr))
+            mu = float(np.nanmean(arr))
             sigma = float(np.nanstd(arr))
             legend_labels.append(f"{tag}  (μ={mu:.4g}, σ={sigma:.3g})")
         else:
             legend_labels.append(f"{tag}  [{lo_val:.4g} – {hi_val:.4g}]")
 
     host.legend(
-        legend_lines, legend_labels,
+        legend_lines,
+        legend_labels,
         loc="lower left",
         bbox_to_anchor=(0.0, 1.0),
         ncol=min(len(tags), 4),
