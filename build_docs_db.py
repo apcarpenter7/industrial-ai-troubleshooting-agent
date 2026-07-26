@@ -20,6 +20,7 @@ import yaml
 import json
 import argparse
 from pathlib import Path
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_DIR = Path(__file__).parent
@@ -270,9 +271,14 @@ def build(rebuild: bool = False) -> None:
         except Exception:
             pass
 
+    emb_function = SentenceTransformerEmbeddingFunction(
+        model_name="BAAI/bge-small-en-v1.5", normalize_embeddings=True
+    )
+
     collection = client.get_or_create_collection(
         name=COLLECTION,
-        metadata={"hnsw:space": "cosine"},  # BGE embeddings use cosine distance
+        metadata={"hnsw:space": "cosine"},
+        embedding_function=emb_function,
     )
 
     # Upsert in batches of 100 (ChromaDB recommendation)
@@ -302,7 +308,6 @@ def build(rebuild: bool = False) -> None:
         collection.upsert(
             ids=ids,
             documents=documents,
-            embeddings=batch_embeddings.tolist(),
             metadatas=metadatas,
         )
         total_upserted += len(batch)
