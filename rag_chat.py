@@ -3,6 +3,12 @@ from sentence_transformers import SentenceTransformer
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 import ollama
 
+import logging
+import warnings
+
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
+
 RAG_DB_DIR = "rag_vector_db"
 
 # 1. Load the model manually like the build script did
@@ -11,17 +17,14 @@ embedder = SentenceTransformer("BAAI/bge-small-en-v1.5")
 client = chromadb.PersistentClient(path=RAG_DB_DIR)
 
 emb_fn = SentenceTransformerEmbeddingFunction(
-    model_name="BAAI/bge-small-en-v1.5",
-    normalize_embeddings=True
+    model_name="BAAI/bge-small-en-v1.5", normalize_embeddings=True
 )
 collection = client.get_collection(name="plant_docs", embedding_function=emb_fn)
 
 
 def ask_local_rag(query_text, model_name="gemma4"):
     # 3. Format query with the prefix the BGE model expects
-    prefixed_query = (
-        f"{query_text}"
-    )
+    prefixed_query = f"{query_text}"
 
     # 4. Manually embed the query and normalize it (required for BGE cosine similarity)
     query_vector = embedder.encode([prefixed_query], normalize_embeddings=True).tolist()
@@ -58,7 +61,7 @@ User Question: {query_text}
 
 
 if __name__ == "__main__":
-    test_query = "Can you give me troubleshooting for Bed Inventory Loss"
+    test_query = "What are the disturbance responses for the furnace draft"
     answer, sources = ask_local_rag(test_query)
 
     print("--- ANSWER ---")
